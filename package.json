@@ -1,0 +1,30 @@
+{
+  "name": "multi-project-task-manager",
+  "version": "1.0.0",
+  "description": "A comprehensive task management tool with multi-project support, Gantt charts, and AWS Cognito authentication",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspace=shared && npm run build --workspace=backend && npm run build --workspace=frontend",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "install:all": "npm install && npm install --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "task-management",
+    "gantt-chart",
+    "multi-project",
+    "aws-cognito",
+    "workload-management"
+  ]
+}
