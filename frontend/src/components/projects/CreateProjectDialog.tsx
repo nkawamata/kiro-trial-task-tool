@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Dialog,
   DialogTitle,
@@ -13,13 +13,16 @@ import {
   Select,
   MenuItem,
   Alert,
+  Typography,
+  Chip,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { AppDispatch } from '../../store';
+import { AppDispatch, RootState } from '../../store';
 import { createProject } from '../../store/slices/projectsSlice';
-import { ProjectStatus } from '@task-manager/shared';
+import { ProjectStatus, User, ProjectRole } from '@task-manager/shared';
+import { TeamMemberSelector } from '../team';
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -28,6 +31,8 @@ interface CreateProjectDialogProps {
 
 export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -35,6 +40,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
     endDate: null as Date | null,
     status: ProjectStatus.PLANNING,
   });
+  const [teamMembers, setTeamMembers] = useState<Array<{ user: User; role: ProjectRole }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -50,13 +56,19 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
     setError('');
 
     try {
-      await dispatch(createProject({
+      const projectPayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         startDate: formData.startDate,
         endDate: formData.endDate || undefined,
         status: formData.status,
-      })).unwrap();
+        teamMembers: teamMembers.map(member => ({
+          userId: member.user.id,
+          role: member.role
+        }))
+      };
+
+      await dispatch(createProject(projectPayload)).unwrap();
 
       // Reset form and close dialog
       setFormData({
@@ -66,6 +78,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
         endDate: null,
         status: ProjectStatus.PLANNING,
       });
+      setTeamMembers([]);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to create project');
@@ -83,6 +96,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
         endDate: null,
         status: ProjectStatus.PLANNING,
       });
+      setTeamMembers([]);
       setError('');
       onClose();
     }
@@ -149,6 +163,26 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
                   <MenuItem value={ProjectStatus.CANCELLED}>Cancelled</MenuItem>
                 </Select>
               </FormControl>
+
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Project Owner
+                </Typography>
+                {currentUser && (
+                  <Chip
+                    label={`${currentUser.name} (Owner)`}
+                    color="primary"
+                    variant="outlined"
+                    sx={{ mb: 2 }}
+                  />
+                )}
+                
+                <TeamMemberSelector
+                  members={teamMembers}
+                  onChange={setTeamMembers}
+                  disabled={loading}
+                />
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions>

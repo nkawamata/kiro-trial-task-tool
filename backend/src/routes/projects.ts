@@ -28,10 +28,22 @@ router.post('/', async (req: AuthenticatedRequest, res, next) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    const project = await projectService.createProject({
-      ...req.body,
-      ownerId: userId
-    });
+    const { teamMembers, ...projectData } = req.body;
+    
+    let project;
+    if (teamMembers && Array.isArray(teamMembers) && teamMembers.length > 0) {
+      // Create project with team members
+      project = await projectService.createProjectWithTeam({
+        ...projectData,
+        ownerId: userId
+      }, teamMembers);
+    } else {
+      // Create project without additional team members (owner will still be added automatically)
+      project = await projectService.createProject({
+        ...projectData,
+        ownerId: userId
+      });
+    }
     
     res.status(201).json({ project });
   } catch (error) {

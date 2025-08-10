@@ -19,7 +19,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AppDispatch } from '../../store';
 import { updateProject } from '../../store/slices/projectsSlice';
-import { Project, ProjectStatus } from '@task-manager/shared';
+import { Project, ProjectStatus, User, ProjectRole } from '@task-manager/shared';
+import { TeamMemberSelector } from '../team';
 
 interface UpdateProjectDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ export const UpdateProjectDialog: React.FC<UpdateProjectDialogProps> = ({
     endDate: null as Date | null,
     status: ProjectStatus.PLANNING,
   });
+  const [teamMembers, setTeamMembers] = useState<Array<{ user: User; role: ProjectRole }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -159,6 +161,12 @@ export const UpdateProjectDialog: React.FC<UpdateProjectDialogProps> = ({
                   <MenuItem value={ProjectStatus.CANCELLED}>Cancelled</MenuItem>
                 </Select>
               </FormControl>
+
+              <TeamMemberSelector
+                members={teamMembers}
+                onChange={setTeamMembers}
+                disabled={loading}
+              />
             </Box>
           </DialogContent>
           <DialogActions>

@@ -7,6 +7,7 @@ import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
 import { fetchProject } from '../store/slices/projectsSlice';
 import { UpdateProjectDialog } from '../components/projects';
+import { TeamManagement } from '../components/team';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -168,14 +169,10 @@ export const ProjectView: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={2}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6">Team Members</Typography>
-            <Typography color="text.secondary">
-              Team management will be implemented here
-            </Typography>
-          </CardContent>
-        </Card>
+        <TeamManagement 
+          projectId={projectId!} 
+          canManageTeam={true} // TODO: Implement proper permission check
+        />
       </TabPanel>
 
       <TabPanel value={tabValue} index={3}>

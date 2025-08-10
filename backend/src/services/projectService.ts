@@ -2,8 +2,11 @@ import { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, Sca
 import { v4 as uuidv4 } from 'uuid';
 import { Project, ProjectStatus, ProjectMember, ProjectRole } from '../../../shared/src/types';
 import { dynamoDb, TABLES } from '../config/dynamodb';
+import { TeamService } from './teamService';
 
 export class ProjectService {
+  private teamService = new TeamService();
+
   private convertDbProjectToProject(dbProject: any): Project {
     return {
       ...dbProject,
@@ -101,6 +104,35 @@ export class ProjectService {
     });
 
     await dynamoDb.send(command);
+
+    // Automatically add the project owner as a team member with OWNER role
+    try {
+      await this.teamService.addProjectMember(project.id, project.ownerId, ProjectRole.OWNER, project.ownerId);
+    } catch (error) {
+      console.error('Failed to add project owner as team member:', error);
+      // Don't fail project creation if team member addition fails
+    }
+
+    return project;
+  }
+
+  async createProjectWithTeam(
+    projectData: Partial<Project>, 
+    teamMembers: Array<{ userId: string; role: ProjectRole }> = []
+  ): Promise<Project> {
+    // Create the project first
+    const project = await this.createProject(projectData);
+
+    // Add additional team members
+    for (const member of teamMembers) {
+      try {
+        await this.teamService.addProjectMember(project.id, member.userId, member.role, project.ownerId);
+      } catch (error) {
+        console.error(`Failed to add team member ${member.userId}:`, error);
+        // Continue adding other members even if one fails
+      }
+    }
+
     return project;
   }
 
