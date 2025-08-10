@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Grid, Card, CardContent, Button, Chip, CardActionArea } from '@mui/material';
-import { Add as AddIcon, Dashboard as DashboardIcon } from '@mui/icons-material';
+import { Box, Typography, Grid, Card, CardContent, Button, Chip, CardActionArea, IconButton } from '@mui/material';
+import { Add as AddIcon, Dashboard as DashboardIcon, Edit as EditIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjects } from '../store/slices/projectsSlice';
-import { CreateProjectDialog } from '../components/projects/CreateProjectDialog';
+import { CreateProjectDialog, UpdateProjectDialog } from '../components/projects';
+import { Project } from '@task-manager/shared';
 
 export const Dashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -13,6 +14,8 @@ export const Dashboard: React.FC = () => {
   const { projects, loading } = useSelector((state: RootState) => state.projects);
   const { user } = useSelector((state: RootState) => state.auth);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -23,6 +26,12 @@ export const Dashboard: React.FC = () => {
       case 'cancelled': return 'error';
       default: return 'default';
     }
+  };
+
+  const handleEditProject = (project: Project, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click navigation
+    setSelectedProject(project);
+    setUpdateDialogOpen(true);
   };
 
   useEffect(() => {
@@ -76,12 +85,21 @@ export const Dashboard: React.FC = () => {
                             <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                               {project.name}
                             </Typography>
-                            <Chip
-                              label={project.status.replace('_', ' ').toUpperCase()}
-                              size="small"
-                              color={getStatusColor(project.status) as any}
-                              variant="outlined"
-                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleEditProject(project, e)}
+                                sx={{ p: 0.5 }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <Chip
+                                label={project.status.replace('_', ' ').toUpperCase()}
+                                size="small"
+                                color={getStatusColor(project.status) as any}
+                                variant="outlined"
+                              />
+                            </Box>
                           </Box>
                           <Typography variant="body2" color="text.secondary">
                             {project.description || 'No description provided'}
@@ -142,6 +160,15 @@ export const Dashboard: React.FC = () => {
       <CreateProjectDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
+      />
+
+      <UpdateProjectDialog
+        open={updateDialogOpen}
+        onClose={() => {
+          setUpdateDialogOpen(false);
+          setSelectedProject(null);
+        }}
+        project={selectedProject}
       />
     </Box>
   );

@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Typography, Tabs, Tab, Card, CardContent } from '@mui/material';
-import { Folder as ProjectIcon } from '@mui/icons-material';
+import { Box, Typography, Tabs, Tab, Card, CardContent, Button, Chip } from '@mui/material';
+import { Folder as ProjectIcon, Edit as EditIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
 import { fetchProject } from '../store/slices/projectsSlice';
+import { UpdateProjectDialog } from '../components/projects';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -36,6 +37,7 @@ export const ProjectView: React.FC = () => {
   const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects);
   
   const [tabValue, setTabValue] = React.useState(0);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   
   const project = projects.find(p => p.id === projectId);
 
@@ -51,6 +53,17 @@ export const ProjectView: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'planning': return 'info';
+      case 'on_hold': return 'warning';
+      case 'completed': return 'primary';
+      case 'cancelled': return 'error';
+      default: return 'default';
+    }
   };
 
   if (projectsLoading) {
@@ -71,18 +84,35 @@ export const ProjectView: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-        <ProjectIcon />
-        <Typography variant="h4" component="h1">
-          {project.name}
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <ProjectIcon />
+            <Typography variant="h4" component="h1">
+              {project.name}
+            </Typography>
+            <Chip
+              label={project.status.replace('_', ' ').toUpperCase()}
+              size="small"
+              color={getStatusColor(project.status) as any}
+              variant="outlined"
+              sx={{ ml: 2 }}
+            />
+          </Box>
+          {project.description && (
+            <Typography variant="body1" color="text.secondary">
+              {project.description}
+            </Typography>
+          )}
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<EditIcon />}
+          onClick={() => setUpdateDialogOpen(true)}
+        >
+          Edit Project
+        </Button>
       </Box>
-
-      {project.description && (
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          {project.description}
-        </Typography>
-      )}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tabValue} onChange={handleTabChange}>
@@ -151,13 +181,51 @@ export const ProjectView: React.FC = () => {
       <TabPanel value={tabValue} index={3}>
         <Card>
           <CardContent>
-            <Typography variant="h6">Project Settings</Typography>
-            <Typography color="text.secondary">
-              Project settings will be implemented here
+            <Typography variant="h6" gutterBottom>
+              Project Settings
             </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Project Information
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Name: {project.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Status: {project.status.replace('_', ' ').toUpperCase()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Start Date: {new Date(project.startDate).toLocaleDateString()}
+                </Typography>
+                {project.endDate && (
+                  <Typography variant="body2" color="text.secondary">
+                    End Date: {new Date(project.endDate).toLocaleDateString()}
+                  </Typography>
+                )}
+                <Typography variant="body2" color="text.secondary">
+                  Created: {new Date(project.createdAt).toLocaleDateString()}
+                </Typography>
+              </Box>
+              <Box>
+                <Button
+                  variant="contained"
+                  startIcon={<EditIcon />}
+                  onClick={() => setUpdateDialogOpen(true)}
+                >
+                  Edit Project Details
+                </Button>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
       </TabPanel>
+
+      <UpdateProjectDialog
+        open={updateDialogOpen}
+        onClose={() => setUpdateDialogOpen(false)}
+        project={project}
+      />
     </Box>
   );
 };
