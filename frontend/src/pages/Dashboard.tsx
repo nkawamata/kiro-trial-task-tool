@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Grid, Card, CardContent, Button, Chip, CardActionArea, IconButton } from '@mui/material';
-import { Add as AddIcon, Dashboard as DashboardIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Add as AddIcon, Dashboard as DashboardIcon, Edit as EditIcon, Assignment as TaskIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjects } from '../store/slices/projectsSlice';
 import { CreateProjectDialog, UpdateProjectDialog } from '../components/projects';
@@ -151,6 +151,15 @@ export const Dashboard: React.FC = () => {
                     Tasks Due Today
                   </Typography>
                 </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<TaskIcon />}
+                  onClick={() => navigate('/tasks/create')}
+                  fullWidth
+                  sx={{ mt: 2 }}
+                >
+                  Create Task
+                </Button>
               </Box>
             </CardContent>
           </Card>

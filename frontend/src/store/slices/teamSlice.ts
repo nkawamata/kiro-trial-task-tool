@@ -33,17 +33,17 @@ export const addProjectMember = createAsyncThunk(
 
 export const removeProjectMember = createAsyncThunk(
   'team/removeProjectMember',
-  async ({ projectId, memberId }: { projectId: string; memberId: string }) => {
-    await teamService.removeProjectMember(projectId, memberId);
-    return { projectId, memberId };
+  async ({ projectId, userId }: { projectId: string; userId: string }) => {
+    await teamService.removeProjectMember(projectId, userId);
+    return { projectId, userId };
   }
 );
 
 export const updateMemberRole = createAsyncThunk(
   'team/updateMemberRole',
-  async ({ projectId, memberId, role }: { projectId: string; memberId: string; role: ProjectRole }) => {
-    const member = await teamService.updateMemberRole(projectId, memberId, { role });
-    return { projectId, memberId, member };
+  async ({ projectId, userId, role }: { projectId: string; userId: string; role: ProjectRole }) => {
+    const member = await teamService.updateMemberRole(projectId, userId, { role });
+    return { projectId, userId, member };
   }
 );
 
@@ -96,10 +96,10 @@ const teamSlice = createSlice({
       })
       .addCase(removeProjectMember.fulfilled, (state, action) => {
         state.loading = false;
-        const { projectId, memberId } = action.payload;
+        const { projectId, userId } = action.payload;
         if (state.members[projectId]) {
           state.members[projectId] = state.members[projectId].filter(
-            member => member.userId !== memberId
+            member => member.userId !== userId
           );
         }
       })
@@ -115,9 +115,9 @@ const teamSlice = createSlice({
       })
       .addCase(updateMemberRole.fulfilled, (state, action) => {
         state.loading = false;
-        const { projectId, memberId, member } = action.payload;
+        const { projectId, userId, member } = action.payload;
         if (state.members[projectId]) {
-          const memberIndex = state.members[projectId].findIndex(m => m.userId === memberId);
+          const memberIndex = state.members[projectId].findIndex(m => m.userId === userId);
           if (memberIndex !== -1) {
             state.members[projectId][memberIndex] = { ...state.members[projectId][memberIndex], ...member };
           }

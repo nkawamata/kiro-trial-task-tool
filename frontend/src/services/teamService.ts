@@ -29,12 +29,12 @@ export const teamService = {
     return response.data.member;
   },
 
-  async removeProjectMember(projectId: string, memberId: string): Promise<void> {
-    await apiClient.delete(`/team/projects/${projectId}/members/${memberId}`);
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    await apiClient.delete(`/team/projects/${projectId}/members/${userId}`);
   },
 
-  async updateMemberRole(projectId: string, memberId: string, data: UpdateRoleRequest): Promise<ProjectMember> {
-    const response = await apiClient.put(`/team/projects/${projectId}/members/${memberId}/role`, data);
+  async updateMemberRole(projectId: string, userId: string, data: UpdateRoleRequest): Promise<ProjectMember> {
+    const response = await apiClient.put(`/team/projects/${projectId}/members/${userId}/role`, data);
     return response.data.member;
   },
 

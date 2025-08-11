@@ -62,7 +62,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({ projectId, canMa
 
   const handleRemoveMember = async (member: ProjectMemberWithUser) => {
     try {
-      await dispatch(removeProjectMember({ projectId, memberId: member.userId })).unwrap();
+      await dispatch(removeProjectMember({ projectId, userId: member.userId })).unwrap();
       setMenuAnchor(null);
       setSelectedMember(null);
     } catch (err: any) {
@@ -72,7 +72,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({ projectId, canMa
 
   const handleUpdateRole = async (member: ProjectMemberWithUser, newRole: ProjectRole) => {
     try {
-      await dispatch(updateMemberRole({ projectId, memberId: member.userId, role: newRole })).unwrap();
+      await dispatch(updateMemberRole({ projectId, userId: member.userId, role: newRole })).unwrap();
       setMenuAnchor(null);
       setSelectedMember(null);
     } catch (err: any) {

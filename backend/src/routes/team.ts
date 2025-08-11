@@ -50,22 +50,22 @@ router.post('/projects/:projectId/members', async (req: AuthenticatedRequest, re
 });
 
 // Remove project member
-router.delete('/projects/:projectId/members/:memberId', async (req: AuthenticatedRequest, res, next) => {
+router.delete('/projects/:projectId/members/:userId', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const userId = req.user?.sub;
-    const { projectId, memberId } = req.params;
+    const currentUserId = req.user?.sub;
+    const { projectId, userId } = req.params;
     
-    if (!userId) {
+    if (!currentUserId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if user can manage team
-    const canManage = await teamService.canUserManageTeam(projectId, userId);
+    const canManage = await teamService.canUserManageTeam(projectId, currentUserId);
     if (!canManage) {
       return res.status(403).json({ error: 'Insufficient permissions to manage team' });
     }
 
-    await teamService.removeProjectMember(projectId, memberId, userId);
+    await teamService.removeProjectMember(projectId, userId, currentUserId);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -73,23 +73,23 @@ router.delete('/projects/:projectId/members/:memberId', async (req: Authenticate
 });
 
 // Update member role
-router.put('/projects/:projectId/members/:memberId/role', async (req: AuthenticatedRequest, res, next) => {
+router.put('/projects/:projectId/members/:userId/role', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const userId = req.user?.sub;
-    const { projectId, memberId } = req.params;
+    const currentUserId = req.user?.sub;
+    const { projectId, userId } = req.params;
     const { role } = req.body;
     
-    if (!userId) {
+    if (!currentUserId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if user can manage team
-    const canManage = await teamService.canUserManageTeam(projectId, userId);
+    const canManage = await teamService.canUserManageTeam(projectId, currentUserId);
     if (!canManage) {
       return res.status(403).json({ error: 'Insufficient permissions to manage team' });
     }
 
-    const member = await teamService.updateMemberRole(projectId, memberId, role, userId);
+    const member = await teamService.updateMemberRole(projectId, userId, role, currentUserId);
     res.json({ member });
   } catch (error) {
     next(error);

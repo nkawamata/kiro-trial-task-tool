@@ -100,15 +100,21 @@ export class TeamService {
     const result = await dynamoDb.send(command);
     const members = (result.Items || []).map(item => this.convertDbMemberToMember(item));
 
-    // Get user details for each member
+    // Get user details for each member, filtering out members with missing users
     const membersWithUsers = await Promise.all(
       members.map(async (member) => {
-        const user = await this.userService.getUserProfile(member.userId);
-        return { ...member, user };
+        try {
+          const user = await this.userService.getUserProfile(member.userId);
+          return { ...member, user };
+        } catch (error) {
+          console.warn(`User not found for member ${member.id} (userId: ${member.userId})`);
+          return null;
+        }
       })
     );
 
-    return membersWithUsers;
+    // Filter out null entries (members with missing users)
+    return membersWithUsers.filter((member): member is ProjectMember & { user: User } => member !== null);
   }
 
   async getProjectMember(projectId: string, userId: string): Promise<ProjectMember | null> {

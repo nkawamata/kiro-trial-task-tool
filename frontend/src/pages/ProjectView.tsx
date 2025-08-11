@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Typography, Tabs, Tab, Card, CardContent, Button, Chip } from '@mui/material';
-import { Folder as ProjectIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Box, Typography, Tabs, Tab, Card, CardContent, Button, Chip, Link } from '@mui/material';
+import { Folder as ProjectIcon, Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
 import { fetchProject } from '../store/slices/projectsSlice';
@@ -33,6 +33,7 @@ function TabPanel(props: TabPanelProps) {
 
 export const ProjectView: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { tasks, loading: tasksLoading } = useSelector((state: RootState) => state.tasks);
   const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects);
@@ -54,6 +55,10 @@ export const ProjectView: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleCreateTask = () => {
+    navigate(`/tasks/create?projectId=${projectId}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -127,9 +132,19 @@ export const ProjectView: React.FC = () => {
       <TabPanel value={tabValue} index={0}>
         <Card>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Project Tasks
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Project Tasks
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreateTask}
+                size="small"
+              >
+                Create Task
+              </Button>
+            </Box>
             {tasksLoading ? (
               <Typography>Loading tasks...</Typography>
             ) : tasks.length === 0 ? (
@@ -140,7 +155,14 @@ export const ProjectView: React.FC = () => {
               <Box>
                 {tasks.map((task) => (
                   <Box key={task.id} sx={{ py: 2, borderBottom: '1px solid #eee' }}>
-                    <Typography variant="subtitle1">{task.title}</Typography>
+                    <Link
+                      component="button"
+                      variant="subtitle1"
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                      sx={{ textAlign: 'left', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {task.title}
+                    </Link>
                     <Typography variant="body2" color="text.secondary">
                       Status: {task.status} | Priority: {task.priority}
                     </Typography>

@@ -39,6 +39,15 @@ export class TaskService {
     await this.projectService.getProject(taskData.projectId!, userId);
 
     const now = new Date();
+    
+    // Convert string dates to Date objects if they exist
+    const startDate = taskData.startDate ? 
+      (typeof taskData.startDate === 'string' ? new Date(taskData.startDate) : taskData.startDate) : 
+      undefined;
+    const endDate = taskData.endDate ? 
+      (typeof taskData.endDate === 'string' ? new Date(taskData.endDate) : taskData.endDate) : 
+      undefined;
+
     const task: Task = {
       id: uuidv4(),
       title: taskData.title!,
@@ -47,8 +56,8 @@ export class TaskService {
       assigneeId: taskData.assigneeId,
       status: taskData.status || TaskStatus.TODO,
       priority: taskData.priority || TaskPriority.MEDIUM,
-      startDate: taskData.startDate,
-      endDate: taskData.endDate,
+      startDate,
+      endDate,
       estimatedHours: taskData.estimatedHours,
       actualHours: taskData.actualHours,
       dependencies: taskData.dependencies || [],
@@ -130,12 +139,18 @@ export class TaskService {
 
     if (updates.startDate !== undefined) {
       updateExpression.push('startDate = :startDate');
-      expressionAttributeValues[':startDate'] = updates.startDate instanceof Date ? updates.startDate.toISOString() : updates.startDate;
+      const startDate = updates.startDate ? 
+        (typeof updates.startDate === 'string' ? updates.startDate : updates.startDate.toISOString()) : 
+        null;
+      expressionAttributeValues[':startDate'] = startDate;
     }
 
     if (updates.endDate !== undefined) {
       updateExpression.push('endDate = :endDate');
-      expressionAttributeValues[':endDate'] = updates.endDate instanceof Date ? updates.endDate.toISOString() : updates.endDate;
+      const endDate = updates.endDate ? 
+        (typeof updates.endDate === 'string' ? updates.endDate : updates.endDate.toISOString()) : 
+        null;
+      expressionAttributeValues[':endDate'] = endDate;
     }
 
     if (updates.estimatedHours !== undefined) {

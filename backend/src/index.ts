@@ -54,6 +54,8 @@ app.use('/api/workload', authMiddleware, workloadRoutes);
 app.use('/api/gantt', authMiddleware, ganttRoutes);
 app.use('/api/team', authMiddleware, teamRoutes);
 
+
+
 // Error handling
 app.use(errorLogger);
 app.use(errorHandler);

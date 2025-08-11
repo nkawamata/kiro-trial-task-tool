@@ -11,6 +11,9 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { ProjectView } from './pages/ProjectView';
 import { TaskManagement } from './pages/TaskManagement';
+import { TaskCreatePage } from './pages/TaskCreatePage';
+import { TaskEditPage } from './pages/TaskEditPage';
+import { TaskDetailPage } from './pages/TaskDetailPage';
 import { WorkloadView } from './pages/WorkloadView';
 import { GanttView } from './pages/GanttView';
 import { AuthCallback } from './components/auth/AuthCallback';
@@ -59,6 +62,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects/:projectId" element={<ProjectView />} />
         <Route path="/tasks" element={<TaskManagement />} />
+        <Route path="/tasks/create" element={<TaskCreatePage />} />
+        <Route path="/tasks/:taskId/edit" element={<TaskEditPage />} />
+        <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/workload" element={<WorkloadView />} />
         <Route path="/gantt" element={<GanttView />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
