@@ -5,6 +5,18 @@ import { AuthenticatedRequest } from '../middleware/auth';
 const router = Router();
 const taskService = new TaskService();
 
+// Get tasks for current user
+router.get('/user', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const userId = req.user?.sub;
+    
+    const tasks = await taskService.getUserTasks(userId!);
+    res.json({ tasks });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get tasks for a project
 router.get('/project/:projectId', async (req: AuthenticatedRequest, res, next) => {
   try {
