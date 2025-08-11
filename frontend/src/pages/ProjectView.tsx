@@ -182,10 +182,36 @@ export const ProjectView: React.FC = () => {
       <TabPanel value={tabValue} index={1}>
         <Card>
           <CardContent>
-            <Typography variant="h6">Timeline View</Typography>
-            <Typography color="text.secondary">
-              Gantt chart will be implemented here
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Timeline View</Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate(`/gantt/${projectId}`)}
+              >
+                Open Gantt Chart
+              </Button>
+            </Box>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              View this project's tasks in an interactive Gantt chart with timeline visualization, 
+              dependencies, and progress tracking.
             </Typography>
+            <Box sx={{ 
+              height: '300px', 
+              border: '2px dashed #e0e0e0', 
+              borderRadius: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 2
+            }}>
+              <Typography variant="h6" color="text.secondary">
+                Gantt Chart Preview
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Click "Open Gantt Chart" to view the full interactive timeline
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
       </TabPanel>
