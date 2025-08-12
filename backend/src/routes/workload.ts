@@ -62,4 +62,51 @@ router.get('/distribution', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get workload entries for a date range
+router.get('/entries', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const userId = req.user?.sub;
+    const { startDate, endDate } = req.query;
+    
+    const entries = await workloadService.getWorkloadEntries(
+      userId!,
+      startDate as string,
+      endDate as string
+    );
+    
+    res.json({ entries });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update actual hours for a workload entry
+router.patch('/:workloadId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { workloadId } = req.params;
+    const { actualHours } = req.body;
+    
+    const workload = await workloadService.updateWorkloadActualHours(
+      workloadId,
+      actualHours
+    );
+    
+    res.json({ workload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete workload entry
+router.delete('/:workloadId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { workloadId } = req.params;
+    
+    await workloadService.deleteWorkloadEntry(workloadId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as workloadRoutes };

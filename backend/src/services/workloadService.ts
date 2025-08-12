@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO } from 'date-fns';
 import { WorkloadSummary, WorkloadEntry } from '../../../shared/src/types';
@@ -15,7 +15,19 @@ export class WorkloadService {
     startDate: string,
     endDate: string
   ): Promise<WorkloadSummary> {
-    const user = await this.userService.getUserProfile(userId);
+    let user;
+    try {
+      user = await this.userService.getUserProfile(userId);
+    } catch (error) {
+      // If user not found, return empty workload summary
+      return {
+        userId,
+        userName: 'Unknown User',
+        totalAllocatedHours: 0,
+        totalActualHours: 0,
+        projects: []
+      };
+    }
     
     const command = new QueryCommand({
       TableName: TABLES.WORKLOAD,
@@ -204,5 +216,85 @@ export class WorkloadService {
       available,
       projects
     };
+  }
+
+  async getWorkloadEntries(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadEntry[]> {
+    const command = new QueryCommand({
+      TableName: TABLES.WORKLOAD,
+      IndexName: 'UserIdDateIndex',
+      KeyConditionExpression: 'userId = :userId AND #date BETWEEN :startDate AND :endDate',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      },
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':startDate': startDate,
+        ':endDate': endDate
+      }
+    });
+
+    const result = await dynamoDb.send(command);
+    return (result.Items || []).map(item => ({
+      id: item.id,
+      userId: item.userId,
+      projectId: item.projectId,
+      taskId: item.taskId,
+      date: parseISO(item.date),
+      allocatedHours: item.allocatedHours,
+      actualHours: item.actualHours
+    })) as WorkloadEntry[];
+  }
+
+  async updateWorkloadActualHours(
+    workloadId: string,
+    actualHours: number
+  ): Promise<WorkloadEntry> {
+    const getCommand = new GetCommand({
+      TableName: TABLES.WORKLOAD,
+      Key: { id: workloadId }
+    });
+
+    const result = await dynamoDb.send(getCommand);
+    if (!result.Item) {
+      throw new Error('Workload entry not found');
+    }
+
+    const originalEntry = result.Item as any;
+    const updatedEntry = {
+      ...originalEntry,
+      actualHours,
+      updatedAt: new Date().toISOString()
+    };
+
+    const putCommand = new PutCommand({
+      TableName: TABLES.WORKLOAD,
+      Item: updatedEntry
+    });
+
+    await dynamoDb.send(putCommand);
+
+    // Return the updated entry with parsed date
+    return {
+      id: originalEntry.id,
+      userId: originalEntry.userId,
+      projectId: originalEntry.projectId,
+      taskId: originalEntry.taskId,
+      date: parseISO(originalEntry.date),
+      allocatedHours: originalEntry.allocatedHours,
+      actualHours: actualHours
+    } as WorkloadEntry;
+  }
+
+  async deleteWorkloadEntry(workloadId: string): Promise<void> {
+    const command = new DeleteCommand({
+      TableName: TABLES.WORKLOAD,
+      Key: { id: workloadId }
+    });
+
+    await dynamoDb.send(command);
   }
 }

@@ -11,7 +11,8 @@
     "lint": "eslint src --ext .ts",
     "db:create-tables": "ts-node src/scripts/createTables.ts",
     "db:seed": "ts-node src/scripts/seed.ts",
-    "db:seed-current-user": "ts-node src/scripts/seedForCurrentUser.ts"
+    "db:seed-current-user": "ts-node src/scripts/seedForCurrentUser.ts",
+    "db:seed-current-workload": "ts-node src/scripts/seedCurrentWorkload.ts"
   },
   "dependencies": {
     "@task-manager/shared": "*",

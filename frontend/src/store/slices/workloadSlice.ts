@@ -6,6 +6,7 @@ interface WorkloadState {
   summary: WorkloadSummary | null;
   teamWorkload: WorkloadSummary[];
   distribution: any;
+  entries: any[];
   loading: boolean;
   error: string | null;
 }
@@ -14,6 +15,7 @@ const initialState: WorkloadState = {
   summary: null,
   teamWorkload: [],
   distribution: null,
+  entries: [],
   loading: false,
   error: null,
 };
@@ -50,6 +52,16 @@ export const fetchWorkloadDistribution = createAsyncThunk(
   }
 );
 
+export const fetchWorkloadEntries = createAsyncThunk(
+  'workload/fetchEntries',
+  async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
+    const response = await apiClient.get('/workload/entries', {
+      params: { startDate, endDate }
+    });
+    return response.data.entries;
+  }
+);
+
 const workloadSlice = createSlice({
   name: 'workload',
   initialState,
@@ -76,6 +88,9 @@ const workloadSlice = createSlice({
       })
       .addCase(fetchWorkloadDistribution.fulfilled, (state, action) => {
         state.distribution = action.payload;
+      })
+      .addCase(fetchWorkloadEntries.fulfilled, (state, action) => {
+        state.entries = action.payload;
       });
   },
 });

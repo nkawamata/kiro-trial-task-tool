@@ -116,4 +116,20 @@ export class UserService {
     const result = await dynamoDb.send(command);
     return (result.Items || []).map(item => this.convertDbUserToUser(item));
   }
+
+  async getOrCreateUserByCognitoId(cognitoId: string, userData?: { email?: string; name?: string }): Promise<User> {
+    // First try to find existing user
+    let user = await this.getUserByCognitoId(cognitoId);
+    
+    if (!user) {
+      // Create new user if not found
+      user = await this.createUser({
+        cognitoId,
+        email: userData?.email || `user-${cognitoId.substring(0, 8)}@example.com`,
+        name: userData?.name || 'New User'
+      });
+    }
+    
+    return user;
+  }
 }
