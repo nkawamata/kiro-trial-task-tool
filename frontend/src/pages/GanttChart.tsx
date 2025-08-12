@@ -40,7 +40,7 @@ export const GanttChart: React.FC = () => {
   const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects);
   
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || 'all');
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
 

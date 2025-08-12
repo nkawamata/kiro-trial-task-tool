@@ -8,12 +8,17 @@ const userService = new UserService();
 // Get current user profile
 router.get('/me', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const userId = req.user?.sub;
-    if (!userId) {
+    const cognitoId = req.user?.sub;
+    if (!cognitoId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    const user = await userService.getUserProfile(userId);
+    // Get database user from cognitoId
+    const user = req.dbUser || await userService.getUserByCognitoId(cognitoId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+    
     res.json({ user });
   } catch (error) {
     next(error);
@@ -23,12 +28,18 @@ router.get('/me', async (req: AuthenticatedRequest, res, next) => {
 // Update user profile
 router.put('/me', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const userId = req.user?.sub;
-    if (!userId) {
+    const cognitoId = req.user?.sub;
+    if (!cognitoId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    const user = await userService.updateUserProfile(userId, req.body);
+    // Get database user from cognitoId
+    const currentUser = req.dbUser || await userService.getUserByCognitoId(cognitoId);
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+    
+    const user = await userService.updateUserProfile(currentUser.id, req.body);
     res.json({ user });
   } catch (error) {
     next(error);

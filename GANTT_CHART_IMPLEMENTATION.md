@@ -10,7 +10,7 @@ Successfully implemented a comprehensive Gantt chart feature for the multi-proje
 - **Routes**: `/gantt` (all projects) and `/gantt/:projectId` (specific project)
 - **Features**:
   - Project selection dropdown with "All Projects" option
-  - View mode controls (Day, Week, Month, Quarter)
+  - View mode controls (Day, Week, Month, Quarter) - defaults to daily view
   - Status filtering (Todo, In Progress, In Review, Done, Blocked)
   - Priority filtering (Low, Medium, High, Urgent)
   - Active filter chips with remove functionality

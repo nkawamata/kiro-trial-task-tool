@@ -18,8 +18,16 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onTaskUpdate,
   getTaskColor
 }) => {
+
+
+  // Simple date normalization that preserves the local date
+  const normalizeDateString = (date: Date) => {
+    // Simply create a new date with the same year, month, day in local timezone
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  };
   // Calculate timeline bounds
   const timelineBounds = useMemo(() => {
+
     if (tasks.length === 0) {
       const now = new Date();
       return {
@@ -28,39 +36,58 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
       };
     }
 
-    const startDates = tasks.map(t => t.start.getTime());
-    const endDates = tasks.map(t => t.end.getTime());
+    // Normalize all dates to start of day using JST-compatible method
+    const startDates = tasks.map(t => normalizeDateString(t.start).getTime());
+    const endDates = tasks.map(t => normalizeDateString(t.end).getTime());
     
     const minStart = new Date(Math.min(...startDates));
     const maxEnd = new Date(Math.max(...endDates));
     
-    // Add some padding
-    const padding = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+    // Add padding in days (not milliseconds to avoid timezone issues)
+    const paddingDays = 7;
+    const startWithPadding = new Date(minStart);
+    startWithPadding.setDate(startWithPadding.getDate() - paddingDays);
+    
+    const endWithPadding = new Date(maxEnd);
+    endWithPadding.setDate(endWithPadding.getDate() + paddingDays);
     
     return {
-      start: new Date(minStart.getTime() - padding),
-      end: new Date(maxEnd.getTime() + padding)
+      start: startWithPadding,
+      end: endWithPadding
     };
   }, [tasks]);
 
   // Generate time scale based on view mode
   const timeScale = useMemo(() => {
     const { start, end } = timelineBounds;
-    const scale: { date: Date; label: string; isMainTick: boolean }[] = [];
+    const scale: { date: Date; label: string; isMainTick: boolean; showLabel: boolean; monthLabel?: string }[] = [];
     
+    // Start from the beginning of the start date
     const current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+    let lastMonth = -1;
     
     while (current <= end) {
       let label = '';
       let isMainTick = false;
+      let showLabel = true;
+      let monthLabel = '';
       
       switch (viewMode) {
         case 'day':
-          label = current.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          });
-          isMainTick = current.getDate() === 1 || current.getDay() === 1; // First of month or Monday
+          // For daily view, show day numbers and month headers
+          label = current.getDate().toString();
+          isMainTick = current.getDay() === 1; // Monday
+          
+          // Add month label for first day of month or when month changes
+          if (current.getMonth() !== lastMonth) {
+            monthLabel = current.toLocaleDateString('en-US', { 
+              month: 'short',
+              year: current.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+            });
+            lastMonth = current.getMonth();
+          }
+          
           current.setDate(current.getDate() + 1);
           break;
           
@@ -89,7 +116,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           break;
       }
       
-      scale.push({ date: new Date(current), label, isMainTick });
+      scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
     }
     
     return scale;
@@ -97,12 +124,18 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
   // Calculate task positions
   const getTaskPosition = (task: GanttTask) => {
-    const totalDuration = timelineBounds.end.getTime() - timelineBounds.start.getTime();
-    const taskStart = task.start.getTime() - timelineBounds.start.getTime();
-    const taskDuration = task.end.getTime() - task.start.getTime();
+    // Use the more robust date normalization for JST compatibility
+    const timelineStart = normalizeDateString(timelineBounds.start);
+    const timelineEnd = normalizeDateString(timelineBounds.end);
+    const taskStart = normalizeDateString(task.start);
+    const taskEnd = normalizeDateString(task.end);
     
-    const left = (taskStart / totalDuration) * 100;
-    const width = (taskDuration / totalDuration) * 100;
+    const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
+    const taskStartOffset = taskStart.getTime() - timelineStart.getTime();
+    const taskDuration = taskEnd.getTime() - taskStart.getTime();
+    
+    const left = (taskStartOffset / totalDuration) * 100;
+    const width = Math.max((taskDuration / totalDuration) * 100, 0.5); // Minimum width for visibility
     
     return { left: `${left}%`, width: `${width}%` };
   };
@@ -120,48 +153,149 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Timeline Header */}
       <Box sx={{ 
-        height: '60px', 
+        height: viewMode === 'day' ? '80px' : '60px', 
         borderBottom: '2px solid #e0e0e0',
         backgroundColor: 'white',
         position: 'sticky',
         top: 0,
         zIndex: 1
       }}>
-        <Box sx={{ 
-          height: '100%', 
-          display: 'flex', 
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {timeScale.map((tick, index) => {
-            const position = ((tick.date.getTime() - timelineBounds.start.getTime()) / 
-              (timelineBounds.end.getTime() - timelineBounds.start.getTime())) * 100;
+        {viewMode === 'day' ? (
+          // Two-row header for daily view
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Month row */}
+            <Box sx={{ 
+              height: '40px', 
+              display: 'flex', 
+              position: 'relative',
+              borderBottom: '1px solid #e0e0e0'
+            }}>
+              {timeScale.map((tick, index) => {
+                if (!tick.monthLabel) return null;
+                
+                // Normalize dates for consistent positioning
+                
+                const timelineStart = normalizeDateString(timelineBounds.start);
+                const timelineEnd = normalizeDateString(timelineBounds.end);
+                const tickDate = normalizeDateString(tick.date);
+                
+                const position = ((tickDate.getTime() - timelineStart.getTime()) / 
+                  (timelineEnd.getTime() - timelineStart.getTime())) * 100;
+                
+                return (
+                  <Box
+                    key={`month-${index}`}
+                    sx={{
+                      position: 'absolute',
+                      left: `${position}%`,
+                      height: '100%',
+                      paddingLeft: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      backgroundColor: '#f5f5f5'
+                    }}
+                  >
+                    <Box sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      color: '#1976d2',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {tick.monthLabel}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
             
-            return (
-              <Box
-                key={index}
-                sx={{
-                  position: 'absolute',
-                  left: `${position}%`,
-                  height: '100%',
-                  borderLeft: tick.isMainTick ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                  paddingLeft: '4px',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <Box sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: tick.isMainTick ? 'bold' : 'normal',
-                  color: tick.isMainTick ? '#1976d2' : '#666',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {tick.label}
+            {/* Day row */}
+            <Box sx={{ 
+              height: '40px', 
+              display: 'flex', 
+              position: 'relative'
+            }}>
+              {timeScale.map((tick, index) => {
+                // Normalize dates for consistent positioning
+                
+                const timelineStart = normalizeDateString(timelineBounds.start);
+                const timelineEnd = normalizeDateString(timelineBounds.end);
+                const tickDate = normalizeDateString(tick.date);
+                
+                const position = ((tickDate.getTime() - timelineStart.getTime()) / 
+                  (timelineEnd.getTime() - timelineStart.getTime())) * 100;
+                
+                return (
+                  <Box
+                    key={`day-${index}`}
+                    sx={{
+                      position: 'absolute',
+                      left: `${position}%`,
+                      height: '100%',
+                      borderLeft: tick.isMainTick ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                      paddingLeft: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      minWidth: '25px'
+                    }}
+                  >
+                    <Box sx={{
+                      fontSize: '0.7rem',
+                      fontWeight: tick.isMainTick ? 'bold' : 'normal',
+                      color: tick.isMainTick ? '#1976d2' : '#666',
+                      textAlign: 'center',
+                      width: '20px'
+                    }}>
+                      {tick.label}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        ) : (
+          // Single row header for other views
+          <Box sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {timeScale.map((tick, index) => {
+              // Normalize dates for consistent positioning
+              
+              const timelineStart = normalizeDateString(timelineBounds.start);
+              const timelineEnd = normalizeDateString(timelineBounds.end);
+              const tickDate = normalizeDateString(tick.date);
+              
+              const position = ((tickDate.getTime() - timelineStart.getTime()) / 
+                (timelineEnd.getTime() - timelineStart.getTime())) * 100;
+              
+              return (
+                <Box
+                  key={index}
+                  sx={{
+                    position: 'absolute',
+                    left: `${position}%`,
+                    height: '100%',
+                    borderLeft: tick.isMainTick ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                    paddingLeft: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box sx={{
+                    fontSize: '0.75rem',
+                    fontWeight: tick.isMainTick ? 'bold' : 'normal',
+                    color: tick.isMainTick ? '#1976d2' : '#666',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {tick.label}
+                  </Box>
                 </Box>
-              </Box>
-            );
-          })}
-        </Box>
+              );
+            })}
+          </Box>
+        )}
       </Box>
 
       {/* Task Bars */}
@@ -285,10 +419,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
 
         {/* Today line */}
         {(() => {
-          const today = new Date();
-          if (today >= timelineBounds.start && today <= timelineBounds.end) {
-            const position = ((today.getTime() - timelineBounds.start.getTime()) / 
-              (timelineBounds.end.getTime() - timelineBounds.start.getTime())) * 100;
+          
+          const today = normalizeDateString(new Date());
+          const timelineStart = normalizeDateString(timelineBounds.start);
+          const timelineEnd = normalizeDateString(timelineBounds.end);
+          
+          if (today >= timelineStart && today <= timelineEnd) {
+            const position = ((today.getTime() - timelineStart.getTime()) / 
+              (timelineEnd.getTime() - timelineStart.getTime())) * 100;
             
             return (
               <Box

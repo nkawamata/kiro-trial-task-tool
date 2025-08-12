@@ -28,9 +28,12 @@ This directory contains the Gantt chart implementation for the multi-project tas
 - Interactive task bars with click navigation
 - Dependency visualization with arrows
 - Today indicator line
-- Multiple view modes (day, week, month, quarter)
+- Multiple view modes (day, week, month, quarter) - defaults to daily view with improved readability
 - Task details in sidebar with status chips
 - Responsive design
+- Two-row header layout for daily view (month/day separation)
+- Fixed date alignment issues - tasks now align correctly with timeline dates
+- JST timezone compatibility - proper date handling for Japan Standard Time users
 
 ### 🚧 Planned Enhancements
 - Drag-and-drop task editing

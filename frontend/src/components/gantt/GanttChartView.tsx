@@ -43,11 +43,30 @@ export const GanttChartView: React.FC<GanttChartViewProps> = ({
             break;
         }
 
+        // Parse dates carefully to handle JST timezone
+        const parseTaskDate = (dateStr: string | Date) => {
+          if (dateStr instanceof Date) return dateStr;
+          
+          // If it's an ISO string with timezone, parse it normally
+          if (typeof dateStr === 'string' && dateStr.includes('T')) {
+            return new Date(dateStr);
+          }
+          
+          // If it's a date-only string (YYYY-MM-DD), treat it as local date
+          if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day); // month is 0-indexed
+          }
+          
+          // Fallback to normal parsing
+          return new Date(dateStr);
+        };
+
         return {
           id: task.id,
           name: task.title,
-          start: new Date(task.startDate!),
-          end: new Date(task.endDate!),
+          start: parseTaskDate(task.startDate!),
+          end: parseTaskDate(task.endDate!),
           progress,
           dependencies: task.dependencies || [],
           assignee: task.assigneeId,

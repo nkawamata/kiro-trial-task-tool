@@ -60,13 +60,28 @@ export class UserService {
       updatedAt: user.updatedAt.toISOString()
     };
 
-    const command = new PutCommand({
-      TableName: TABLES.USERS,
-      Item: userForDb
-    });
+    try {
+      const command = new PutCommand({
+        TableName: TABLES.USERS,
+        Item: userForDb,
+        // Add condition to prevent overwriting existing items with same ID
+        ConditionExpression: 'attribute_not_exists(id)'
+      });
 
-    await dynamoDb.send(command);
-    return user;
+      await dynamoDb.send(command);
+      console.log('User created successfully:', { id: user.id, cognitoId: user.cognitoId });
+      return user;
+    } catch (error: any) {
+      // If condition fails, it means the user was created by another request
+      if (error.name === 'ConditionalCheckFailedException') {
+        console.log('User creation failed due to race condition, fetching existing user');
+        const existingUser = await this.getUserByCognitoId(userData.cognitoId);
+        if (existingUser) {
+          return existingUser;
+        }
+      }
+      throw error;
+    }
   }
 
   async updateUserProfile(userId: string, updates: Partial<User>): Promise<User> {
@@ -102,18 +117,58 @@ export class UserService {
   }
 
   async searchUsers(query: string): Promise<User[]> {
+    console.log('UserService.searchUsers called with query:', query);
+    
+    // Make search case-insensitive by converting to lowercase
+    const lowerQuery = query.toLowerCase();
+    
     const command = new ScanCommand({
       TableName: TABLES.USERS,
-      FilterExpression: 'contains(#name, :query) OR contains(email, :query)',
+      FilterExpression: 'contains(#name, :query) OR contains(email, :query) OR contains(#name, :lowerQuery) OR contains(email, :lowerQuery)',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
       ExpressionAttributeValues: {
-        ':query': query
+        ':query': query,
+        ':lowerQuery': lowerQuery
       }
     });
 
     const result = await dynamoDb.send(command);
+    console.log('DynamoDB scan result:', {
+      count: result.Items?.length || 0,
+      items: result.Items?.map(item => ({ 
+        id: item.id, 
+        email: item.email, 
+        name: item.name,
+        cognitoId: item.cognitoId 
+      }))
+    });
+    
+    const users = (result.Items || []).map(item => this.convertDbUserToUser(item));
+    console.log('Converted users:', users.map(u => ({ id: u.id, email: u.email, name: u.name })));
+    
+    return users;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    console.log('UserService.getAllUsers called');
+    
+    const command = new ScanCommand({
+      TableName: TABLES.USERS
+    });
+
+    const result = await dynamoDb.send(command);
+    console.log('All users in database:', {
+      count: result.Items?.length || 0,
+      items: result.Items?.map(item => ({ 
+        id: item.id, 
+        email: item.email, 
+        name: item.name,
+        cognitoId: item.cognitoId 
+      }))
+    });
+    
     return (result.Items || []).map(item => this.convertDbUserToUser(item));
   }
 
