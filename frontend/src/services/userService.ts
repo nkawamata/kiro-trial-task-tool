@@ -26,13 +26,7 @@ export const userService = {
   },
 
   async getUser(userId: string): Promise<User> {
-    // For now, we'll use the search endpoint to find a specific user
-    // In a real app, you might want a dedicated endpoint for this
-    const users = await this.searchUsers(userId);
-    const user = users.find(u => u.id === userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-    return user;
+    const response = await apiClient.get<UserResponse>(`/users/${userId}`);
+    return response.data.user;
   }
 };

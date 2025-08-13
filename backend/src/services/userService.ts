@@ -116,6 +116,28 @@ export class UserService {
     return this.convertDbUserToUser(result.Attributes);
   }
 
+  async getUser(userId: string): Promise<User | null> {
+    console.log('UserService.getUser called with userId:', userId);
+    
+    const command = new GetCommand({
+      TableName: TABLES.USERS,
+      Key: {
+        id: userId
+      }
+    });
+
+    const result = await dynamoDb.send(command);
+    
+    if (!result.Item) {
+      console.log('User not found:', userId);
+      return null;
+    }
+
+    const user = this.convertDbUserToUser(result.Item);
+    console.log('User found:', { id: user.id, email: user.email, name: user.name });
+    return user;
+  }
+
   async searchUsers(query: string): Promise<User[]> {
     console.log('UserService.searchUsers called with query:', query);
     

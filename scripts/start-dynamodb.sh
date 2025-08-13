@@ -17,7 +17,7 @@ fi
 
 # Start DynamoDB Local
 cd infrastructure/dynamodb-local
-java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb -port 8000 &
+java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -inMemory -port 8000 &
 
 # Wait a moment for it to start
 sleep 3

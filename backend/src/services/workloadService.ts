@@ -169,12 +169,20 @@ export class WorkloadService {
   }
 
   async allocateWorkload(allocationData: Partial<WorkloadEntry>): Promise<WorkloadEntry> {
+    // Ensure date is properly parsed if it's a string
+    let date: Date;
+    if (allocationData.date) {
+      date = typeof allocationData.date === 'string' ? parseISO(allocationData.date) : allocationData.date;
+    } else {
+      date = new Date();
+    }
+
     const workloadEntry: WorkloadEntry = {
       id: uuidv4(),
       userId: allocationData.userId!,
       projectId: allocationData.projectId!,
       taskId: allocationData.taskId!,
-      date: allocationData.date || new Date(),
+      date: date,
       allocatedHours: allocationData.allocatedHours || 8,
       actualHours: allocationData.actualHours
     };

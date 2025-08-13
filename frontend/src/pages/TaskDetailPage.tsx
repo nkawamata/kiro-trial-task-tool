@@ -24,7 +24,8 @@ import {
   Flag as FlagIcon
 } from '@mui/icons-material';
 import { taskService } from '../services/taskService';
-import { Task, TaskStatus, TaskPriority } from '@task-manager/shared';
+import { userService } from '../services/userService';
+import { Task, TaskStatus, TaskPriority, User } from '@task-manager/shared';
 
 const getStatusColor = (status: TaskStatus) => {
   switch (status) {
@@ -52,6 +53,7 @@ export const TaskDetailPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   
   const [task, setTask] = useState<Task | null>(null);
+  const [assignee, setAssignee] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [deleting, setDeleting] = useState(false);
@@ -71,6 +73,17 @@ export const TaskDetailPage: React.FC = () => {
     try {
       const taskData = await taskService.getTask(taskId);
       setTask(taskData);
+      
+      // Load assignee details if task has an assignee
+      if (taskData.assigneeId) {
+        try {
+          const assigneeData = await userService.getUser(taskData.assigneeId);
+          setAssignee(assigneeData);
+        } catch (err) {
+          console.warn('Failed to load assignee details:', err);
+          // Don't fail the whole page if assignee loading fails
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load task');
     } finally {
@@ -205,7 +218,9 @@ export const TaskDetailPage: React.FC = () => {
                 <PersonIcon fontSize="small" />
                 <Typography variant="body2" color="text.secondary">Assignee</Typography>
               </Box>
-              <Typography variant="body1">{task.assigneeId}</Typography>
+              <Typography variant="body1">
+                {assignee ? assignee.name || assignee.email : task.assigneeId}
+              </Typography>
             </Grid>
           )}
 

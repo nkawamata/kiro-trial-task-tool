@@ -46,6 +46,22 @@ router.put('/me', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get user by ID
+router.get('/:userId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await userService.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Search users (for project member assignment)
 router.get('/search', async (req: AuthenticatedRequest, res, next) => {
   try {

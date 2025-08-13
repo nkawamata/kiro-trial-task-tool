@@ -21,11 +21,8 @@ import { RootState, AppDispatch } from '../store';
 import { fetchProjects } from '../store/slices/projectsSlice';
 import { taskService } from '../services/taskService';
 import { TaskList, TaskFiltersComponent, TaskFilters } from '../components/tasks';
-import { Task, TaskStatus, TaskPriority, User } from '@task-manager/shared';
-
-interface TaskWithAssignee extends Task {
-  assignee?: User;
-}
+import { Task, TaskStatus, TaskPriority } from '@task-manager/shared';
+import { useTasksWithAssignees, TaskWithAssignee } from '../hooks/useTasksWithAssignees';
 
 export const TaskManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -34,11 +31,14 @@ export const TaskManagement: React.FC = () => {
   const { projects } = useSelector((state: RootState) => state.projects);
   const { user } = useSelector((state: RootState) => state.auth);
   
-  const [tasks, setTasks] = useState<TaskWithAssignee[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedTask, setSelectedTask] = useState<TaskWithAssignee | null>(null);
+
+  // Use the hook to enrich tasks with assignee data
+  const { tasksWithAssignees, loading: assigneesLoading } = useTasksWithAssignees(tasks);
 
   
   const [filters, setFilters] = useState<TaskFilters>({
@@ -71,35 +71,18 @@ export const TaskManagement: React.FC = () => {
       const userProjects = projects;
       
       const allTasks: Task[] = [];
-      const uniqueUserIds = new Set<string>();
       
       // Get tasks from all projects
       for (const project of userProjects) {
         try {
           const projectTasks = await taskService.getProjectTasks(project.id);
           allTasks.push(...projectTasks);
-          
-          // Collect unique user IDs for assignees
-          projectTasks.forEach(task => {
-            if (task.assigneeId) {
-              uniqueUserIds.add(task.assigneeId);
-            }
-          });
         } catch (err) {
           console.warn(`Failed to load tasks for project ${project.name}:`, err);
         }
       }
       
-      // For now, we'll skip loading individual users since we don't have a direct endpoint
-      // In a real implementation, you'd want to batch load users or have the backend return populated data
-      
-      // Convert tasks to TaskWithAssignee format
-      const tasksWithAssignees: TaskWithAssignee[] = allTasks.map(task => ({
-        ...task,
-        assignee: undefined // We'll populate this later when we have user loading
-      }));
-      
-      setTasks(tasksWithAssignees);
+      setTasks(allTasks);
     } catch (err: any) {
       setError(err.message || 'Failed to load tasks');
     } finally {
@@ -150,7 +133,7 @@ export const TaskManagement: React.FC = () => {
   };
 
   // Filter tasks based on current filters
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = tasksWithAssignees.filter(task => {
     // Search filter
     if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase()) &&
         !task.description?.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -257,7 +240,7 @@ export const TaskManagement: React.FC = () => {
       )}
 
       {/* Loading State */}
-      {loading && (
+      {(loading || assigneesLoading) && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -269,7 +252,7 @@ export const TaskManagement: React.FC = () => {
         onTaskClick={handleTaskClick}
         onTaskMenuClick={handleMenuClick}
         getProjectName={getProjectName}
-        loading={loading}
+        loading={loading || assigneesLoading}
         onCreateTask={handleCreateTask}
         hasFilters={filters.search !== '' || filters.status !== 'all' || filters.priority !== 'all' || 
                    filters.projectId !== 'all' || filters.assignedToMe}

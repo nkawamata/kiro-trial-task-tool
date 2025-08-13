@@ -27,6 +27,7 @@ import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
 import { fetchProjects } from '../store/slices/projectsSlice';
 import { GanttChartView } from '../components/gantt/GanttChartView';
+import { useTasksWithAssignees } from '../hooks/useTasksWithAssignees';
 import { TaskStatus, TaskPriority } from '@task-manager/shared';
 
 type ViewMode = 'day' | 'week' | 'month' | 'quarter';
@@ -44,9 +45,12 @@ export const GanttChart: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
 
+  // Use the hook to enrich tasks with assignee data
+  const { tasksWithAssignees, loading: assigneesLoading } = useTasksWithAssignees(tasks);
+
   // Filter tasks based on selected project and filters
   const filteredTasks = useMemo(() => {
-    let filtered = tasks;
+    let filtered = tasksWithAssignees;
 
     // Filter by project
     if (selectedProjectId !== 'all') {
@@ -64,7 +68,7 @@ export const GanttChart: React.FC = () => {
     }
 
     return filtered;
-  }, [tasks, selectedProjectId, statusFilter, priorityFilter]);
+  }, [tasksWithAssignees, selectedProjectId, statusFilter, priorityFilter]);
 
   // Get project name for display
   const getProjectName = (projectId: string) => {
@@ -277,7 +281,7 @@ export const GanttChart: React.FC = () => {
       {/* Gantt Chart */}
       <Card>
         <CardContent sx={{ p: 0 }}>
-          {tasksLoading ? (
+          {(tasksLoading || assigneesLoading) ? (
             <Box sx={{ p: 3 }}>
               <Typography>Loading tasks...</Typography>
             </Box>

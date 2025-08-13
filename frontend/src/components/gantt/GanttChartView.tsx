@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Box, Typography, Chip, Avatar } from '@mui/material';
 import { Task, Project, TaskStatus, TaskPriority, GanttTask } from '@task-manager/shared';
+import { TaskWithAssignee } from '../../hooks/useTasksWithAssignees';
 import { GanttTimeline } from './GanttTimeline';
 
 interface GanttChartViewProps {
-  tasks: Task[];
+  tasks: TaskWithAssignee[];
   projects: Project[];
   viewMode: 'day' | 'week' | 'month' | 'quarter';
   onTaskClick: (taskId: string) => void;
@@ -69,7 +70,7 @@ export const GanttChartView: React.FC<GanttChartViewProps> = ({
           end: parseTaskDate(task.endDate!),
           progress,
           dependencies: task.dependencies || [],
-          assignee: task.assigneeId,
+          assignee: task.assignee?.name || task.assignee?.email || task.assigneeId,
           projectId: task.projectId
         };
       })
