@@ -68,22 +68,22 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
   const getDayWorkload = (date: Date) => {
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) return 0; // Weekend
-    
+
     // Get actual workload data for this date
     const dateString = format(date, 'yyyy-MM-dd');
     const dayEntries = entries.filter(entry => {
       const entryDate = new Date(entry.date);
       return format(entryDate, 'yyyy-MM-dd') === dateString && entry.userId === targetUserId;
     });
-    
+
     // Sum up allocated hours for this day
     const totalHours = dayEntries.reduce((sum, entry) => sum + (entry.allocatedHours || 0), 0);
-    
+
     // Debug logging (remove in production)
     if (totalHours > 0) {
       console.log(`Date ${dateString}: ${totalHours} hours from ${dayEntries.length} entries`);
     }
-    
+
     return Math.round(totalHours * 10) / 10;
   };
 
@@ -191,12 +191,15 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
                 <ChevronRightIcon />
               </IconButton>
             </Box>
-            
+
             <Button
               variant="contained"
               size="small"
               startIcon={<AddIcon />}
-              onClick={() => setAllocationDialogOpen(true)}
+              onClick={() => {
+                setSelectedDate(new Date());
+                setAllocationDialogOpen(true);
+              }}
             >
               Add Allocation
             </Button>
@@ -222,6 +225,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
 
       <WorkloadAllocationDialog
         open={allocationDialogOpen}
+        selectedDate={selectedDate}
         onClose={() => {
           setAllocationDialogOpen(false);
           setSelectedDate(null);

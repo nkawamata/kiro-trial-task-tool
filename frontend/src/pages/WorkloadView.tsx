@@ -69,6 +69,7 @@ export const WorkloadView: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter'>('week');
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const getDateRange = useCallback(() => {
     const now = new Date();
@@ -149,7 +150,10 @@ export const WorkloadView: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setAllocationDialogOpen(true)}
+            onClick={() => {
+              setSelectedDate(new Date());
+              setAllocationDialogOpen(true);
+            }}
           >
             Allocate Work
           </Button>
@@ -487,7 +491,11 @@ export const WorkloadView: React.FC = () => {
 
       <WorkloadAllocationDialog
         open={allocationDialogOpen}
-        onClose={() => setAllocationDialogOpen(false)}
+        selectedDate={selectedDate}
+        onClose={() => {
+          setAllocationDialogOpen(false);
+          setSelectedDate(null);
+        }}
         onSuccess={() => {
           // Refresh workload data
           dispatch(fetchWorkloadDistribution());

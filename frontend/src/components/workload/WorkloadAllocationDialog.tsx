@@ -28,12 +28,14 @@ interface WorkloadAllocationDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  selectedDate?: Date | null;
 }
 
 export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> = ({
   open,
   onClose,
   onSuccess,
+  selectedDate,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { projects } = useSelector((state: RootState) => state.projects);
@@ -44,7 +46,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
     projectId: '',
     taskId: '',
     allocatedHours: 8,
-    date: new Date(),
+    date: selectedDate || new Date(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +54,12 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   useEffect(() => {
     if (open) {
       dispatch(fetchProjects());
+      // Set the date when dialog opens with selected date
+      if (selectedDate) {
+        setFormData(prev => ({ ...prev, date: selectedDate }));
+      }
     }
-  }, [dispatch, open]);
+  }, [dispatch, open, selectedDate]);
 
   useEffect(() => {
     if (formData.projectId) {
@@ -83,7 +89,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
         projectId: '',
         taskId: '',
         allocatedHours: 8,
-        date: new Date(),
+        date: selectedDate || new Date(),
       });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to allocate workload');
@@ -97,7 +103,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
       projectId: '',
       taskId: '',
       allocatedHours: 8,
-      date: new Date(),
+      date: selectedDate || new Date(),
     });
     setError(null);
     onClose();
