@@ -8,6 +8,7 @@ interface GanttChartViewProps {
   tasks: TaskWithAssignee[];
   projects: Project[];
   viewMode: 'day' | 'week' | 'month' | 'quarter';
+  selectedUserId?: string;
   onTaskClick: (taskId: string) => void;
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
 }
@@ -16,6 +17,7 @@ export const GanttChartView: React.FC<GanttChartViewProps> = ({
   tasks,
   projects,
   viewMode,
+  selectedUserId,
   onTaskClick,
   onTaskUpdate
 }) => {
@@ -183,8 +185,19 @@ export const GanttChartView: React.FC<GanttChartViewProps> = ({
                       p: 2,
                       borderBottom: '1px solid #f0f0f0',
                       cursor: 'pointer',
+                      backgroundColor: selectedUserId && (
+                        (selectedUserId === 'unassigned' && !originalTask?.assigneeId) ||
+                        (selectedUserId === originalTask?.assigneeId)
+                      ) ? '#e3f2fd' : 'transparent',
+                      borderLeft: selectedUserId && (
+                        (selectedUserId === 'unassigned' && !originalTask?.assigneeId) ||
+                        (selectedUserId === originalTask?.assigneeId)
+                      ) ? '3px solid #1976d2' : 'none',
                       '&:hover': {
-                        backgroundColor: '#f5f5f5'
+                        backgroundColor: selectedUserId && (
+                          (selectedUserId === 'unassigned' && !originalTask?.assigneeId) ||
+                          (selectedUserId === originalTask?.assigneeId)
+                        ) ? '#bbdefb' : '#f5f5f5'
                       }
                     }}
                     onClick={() => onTaskClick(ganttTask.id)}
@@ -238,6 +251,7 @@ export const GanttChartView: React.FC<GanttChartViewProps> = ({
           <GanttTimeline
             tasks={ganttTasks}
             viewMode={viewMode}
+            selectedUserId={selectedUserId}
             onTaskClick={onTaskClick}
             onTaskUpdate={onTaskUpdate}
             getTaskColor={getTaskColor}

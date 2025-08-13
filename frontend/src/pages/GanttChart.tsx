@@ -21,7 +21,8 @@ import {
   Add as AddIcon,
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
-  Today as TodayIcon
+  Today as TodayIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
@@ -36,17 +37,35 @@ export const GanttChart: React.FC = () => {
   const { projectId } = useParams<{ projectId?: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const { tasks, loading: tasksLoading } = useSelector((state: RootState) => state.tasks);
   const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects);
-  
+
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || 'all');
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
+  const [userFilter, setUserFilter] = useState<string | 'all'>('all');
 
   // Use the hook to enrich tasks with assignee data
   const { tasksWithAssignees, loading: assigneesLoading } = useTasksWithAssignees(tasks);
+
+  // Get unique users from tasks for filter dropdown
+  const availableUsers = useMemo(() => {
+    const userMap = new Map<string, { id: string; name: string; email: string }>();
+
+    tasksWithAssignees.forEach(task => {
+      if (task.assignee) {
+        userMap.set(task.assignee.id, {
+          id: task.assignee.id,
+          name: task.assignee.name,
+          email: task.assignee.email
+        });
+      }
+    });
+
+    return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasksWithAssignees]);
 
   // Filter tasks based on selected project and filters
   const filteredTasks = useMemo(() => {
@@ -67,8 +86,17 @@ export const GanttChart: React.FC = () => {
       filtered = filtered.filter(task => task.priority === priorityFilter);
     }
 
+    // Filter by user/assignee
+    if (userFilter !== 'all') {
+      if (userFilter === 'unassigned') {
+        filtered = filtered.filter(task => !task.assigneeId);
+      } else {
+        filtered = filtered.filter(task => task.assigneeId === userFilter);
+      }
+    }
+
     return filtered;
-  }, [tasksWithAssignees, selectedProjectId, statusFilter, priorityFilter]);
+  }, [tasksWithAssignees, selectedProjectId, statusFilter, priorityFilter, userFilter]);
 
   // Get project name for display
   const getProjectName = (projectId: string) => {
@@ -224,6 +252,42 @@ export const GanttChart: React.FC = () => {
               </Select>
             </FormControl>
 
+            {/* User/Assignee Filter */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <PersonIcon fontSize="small" />
+                  Assignee
+                </Box>
+              </InputLabel>
+              <Select
+                value={userFilter}
+                label="Assignee"
+                onChange={(e) => setUserFilter(e.target.value as string)}
+              >
+                <MenuItem value="all">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon fontSize="small" />
+                    All Users
+                  </Box>
+                </MenuItem>
+                <MenuItem value="unassigned">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon fontSize="small" color="disabled" />
+                    Unassigned
+                  </Box>
+                </MenuItem>
+                {availableUsers.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PersonIcon fontSize="small" color="primary" />
+                      {user.name}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             {/* Quick Actions */}
             <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
               <Tooltip title="Zoom to Today">
@@ -245,8 +309,8 @@ export const GanttChart: React.FC = () => {
           </Box>
 
           {/* Active Filters Display */}
-          {(statusFilter !== 'all' || priorityFilter !== 'all' || selectedProjectId !== 'all') && (
-            <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+          {(statusFilter !== 'all' || priorityFilter !== 'all' || selectedProjectId !== 'all' || userFilter !== 'all') && (
+            <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
               <Typography variant="body2" color="text.secondary">
                 Active filters:
               </Typography>
@@ -273,6 +337,14 @@ export const GanttChart: React.FC = () => {
                   onDelete={() => setPriorityFilter('all')}
                 />
               )}
+              {userFilter !== 'all' && (
+                <Chip
+                  label={`Assignee: ${userFilter === 'unassigned' ? 'Unassigned' : availableUsers.find(u => u.id === userFilter)?.name || 'Unknown'}`}
+                  size="small"
+                  color="info"
+                  onDelete={() => setUserFilter('all')}
+                />
+              )}
             </Box>
           )}
         </CardContent>
@@ -288,10 +360,10 @@ export const GanttChart: React.FC = () => {
           ) : filteredTasks.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Alert severity="info">
-                No tasks found with the current filters. 
+                No tasks found with the current filters.
                 {selectedProjectId !== 'all' ? ' Try selecting a different project or ' : ' '}
-                <Button 
-                  variant="text" 
+                <Button
+                  variant="text"
                   onClick={handleCreateTask}
                   sx={{ textTransform: 'none' }}
                 >
@@ -305,6 +377,7 @@ export const GanttChart: React.FC = () => {
               tasks={filteredTasks}
               projects={projects}
               viewMode={viewMode}
+              selectedUserId={userFilter !== 'all' ? userFilter : undefined}
               onTaskClick={handleTaskClick}
               onTaskUpdate={(taskId, updates) => {
                 // Handle task updates from the Gantt chart

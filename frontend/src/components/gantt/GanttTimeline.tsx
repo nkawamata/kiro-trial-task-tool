@@ -6,6 +6,7 @@ import { formatDuration, calculateDuration } from '../../utils/dateUtils';
 interface GanttTimelineProps {
   tasks: GanttTask[];
   viewMode: 'day' | 'week' | 'month' | 'quarter';
+  selectedUserId?: string;
   onTaskClick: (taskId: string) => void;
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   getTaskColor: (task: GanttTask) => string;
@@ -14,6 +15,7 @@ interface GanttTimelineProps {
 export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   tasks,
   viewMode,
+  selectedUserId,
   onTaskClick,
   onTaskUpdate,
   getTaskColor
@@ -304,6 +306,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           const position = getTaskPosition(task);
           const color = getTaskColor(task);
           
+          // Check if this task matches the selected user filter
+          const isHighlighted = selectedUserId && (
+            (selectedUserId === 'unassigned' && !task.assignee) ||
+            (task.assignee && task.assignee.includes(selectedUserId))
+          );
+          
           return (
             <Box
               key={task.id}
@@ -322,9 +330,14 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 color: 'white',
                 fontSize: '0.75rem',
                 fontWeight: 'medium',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                boxShadow: isHighlighted 
+                  ? '0 4px 12px rgba(25, 118, 210, 0.4)' 
+                  : '0 2px 4px rgba(0,0,0,0.1)',
+                border: isHighlighted ? '2px solid #1976d2' : 'none',
                 '&:hover': {
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  boxShadow: isHighlighted 
+                    ? '0 6px 16px rgba(25, 118, 210, 0.5)' 
+                    : '0 4px 8px rgba(0,0,0,0.2)',
                   transform: 'translateY(-1px)'
                 },
                 transition: 'all 0.2s ease',
@@ -333,7 +346,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 whiteSpace: 'nowrap'
               }}
               onClick={() => handleTaskBarClick(task)}
-              title={`${task.name}\n${getTaskDurationText(task.start, task.end)}\nProgress: ${task.progress}%`}
+              title={`${task.name}\n${getTaskDurationText(task.start, task.end)}\nProgress: ${task.progress}%${task.assignee ? `\nAssignee: ${task.assignee}` : ''}`}
             >
               {/* Progress indicator */}
               <Box
