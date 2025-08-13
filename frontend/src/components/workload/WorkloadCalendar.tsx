@@ -8,7 +8,6 @@ import {
   Grid,
   Chip,
   IconButton,
-  Tooltip,
   Button,
 } from '@mui/material';
 import {
@@ -26,7 +25,6 @@ import {
   addMonths,
   subMonths,
   isSameMonth,
-  isSameDay,
   isToday,
 } from 'date-fns';
 import { RootState, AppDispatch } from '../../store';
@@ -39,7 +37,7 @@ interface WorkloadCalendarProps {
 
 export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { summary, entries } = useSelector((state: RootState) => state.workload);
+  const { entries } = useSelector((state: RootState) => state.workload);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
