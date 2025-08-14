@@ -19,8 +19,6 @@ import {
 import {
   Timeline as TimelineIcon,
   Add as AddIcon,
-  ZoomIn as ZoomInIcon,
-  ZoomOut as ZoomOutIcon,
   Today as TodayIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
@@ -288,21 +286,11 @@ export const GanttChart: React.FC = () => {
               </Select>
             </FormControl>
 
-            {/* Quick Actions */}
+            {/* Quick Actions - These will be handled by the GanttTimeline component */}
             <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-              <Tooltip title="Zoom to Today">
-                <IconButton size="small">
+              <Tooltip title="Timeline navigation available in chart">
+                <IconButton size="small" disabled>
                   <TodayIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Zoom In">
-                <IconButton size="small">
-                  <ZoomInIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Zoom Out">
-                <IconButton size="small">
-                  <ZoomOutIcon />
                 </IconButton>
               </Tooltip>
             </Box>

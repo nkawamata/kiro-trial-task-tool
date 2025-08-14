@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
-import { Box } from '@mui/material';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import { ChevronLeft, ChevronRight, Today } from '@mui/icons-material';
 import { GanttTask, Task } from '@task-manager/shared';
 import { formatDuration, calculateDuration } from '../../utils/dateUtils';
 
@@ -20,56 +21,54 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
   onTaskUpdate,
   getTaskColor
 }) => {
-
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Simple date normalization that preserves the local date
   const normalizeDateString = (date: Date) => {
     // Simply create a new date with the same year, month, day in local timezone
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   };
-  // Calculate timeline bounds
+  // Calculate timeline bounds with extended range for scrolling
   const timelineBounds = useMemo(() => {
-
     if (tasks.length === 0) {
       const now = new Date();
       return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end: new Date(now.getFullYear(), now.getMonth() + 3, 0)
+        start: normalizeDateString(new Date(now.getFullYear() - 1, 0, 1)), // Start from beginning of last year
+        end: normalizeDateString(new Date(now.getFullYear() + 2, 11, 31))  // End at end of next year
       };
     }
 
-    // Normalize all dates to start of day using JST-compatible method
-    const startDates = tasks.map(t => normalizeDateString(t.start).getTime());
-    const endDates = tasks.map(t => normalizeDateString(t.end).getTime());
+    // Find the actual min and max dates from tasks
+    const taskDates = tasks.flatMap(t => [t.start, t.end]);
+    const minDate = new Date(Math.min(...taskDates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...taskDates.map(d => d.getTime())));
     
-    const minStart = new Date(Math.min(...startDates));
-    const maxEnd = new Date(Math.max(...endDates));
-    
-    // Add padding in days (not milliseconds to avoid timezone issues)
-    const paddingDays = 7;
-    const startWithPadding = new Date(minStart);
-    startWithPadding.setDate(startWithPadding.getDate() - paddingDays);
-    
-    const endWithPadding = new Date(maxEnd);
-    endWithPadding.setDate(endWithPadding.getDate() + paddingDays);
+    // Create timeline bounds that start from the beginning of the month containing the earliest task
+    // and end at the end of the month containing the latest task, with some padding
+    const startMonth = new Date(minDate.getFullYear(), minDate.getMonth() - 6, 1); // 6 months before
+    const endMonth = new Date(maxDate.getFullYear(), maxDate.getMonth() + 7, 0); // 6 months after, last day of month
     
     return {
-      start: startWithPadding,
-      end: endWithPadding
+      start: normalizeDateString(startMonth),
+      end: normalizeDateString(endMonth)
     };
   }, [tasks]);
 
   // Generate time scale based on view mode
   const timeScale = useMemo(() => {
-    const { start, end } = timelineBounds;
+    // Use the same normalized bounds as task positioning for consistency
+    const timelineStart = normalizeDateString(timelineBounds.start);
+    const timelineEnd = normalizeDateString(timelineBounds.end);
     const scale: { date: Date; label: string; isMainTick: boolean; showLabel: boolean; monthLabel?: string }[] = [];
     
-    // Start from the beginning of the start date
-    const current = new Date(start);
+    // Start from the normalized timeline start
+    const current = new Date(timelineStart);
     current.setHours(0, 0, 0, 0);
     let lastMonth = -1;
     
-    while (current <= end) {
+    while (current <= timelineEnd) {
       let label = '';
       let isMainTick = false;
       let showLabel = true;
@@ -90,8 +89,12 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             lastMonth = current.getMonth();
           }
           
+
+          
+          // Store the current date BEFORE incrementing
+          scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
           current.setDate(current.getDate() + 1);
-          break;
+          continue; // Skip the push at the end since we already did it
           
         case 'week':
           label = current.toLocaleDateString('en-US', { 
@@ -99,8 +102,11 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             day: 'numeric' 
           });
           isMainTick = current.getDate() <= 7; // First week of month
+          
+          // Store the current date BEFORE incrementing
+          scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
           current.setDate(current.getDate() + 7);
-          break;
+          continue; // Skip the push at the end since we already did it
           
         case 'month':
           label = current.toLocaleDateString('en-US', { 
@@ -108,17 +114,21 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             year: current.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
           });
           isMainTick = current.getMonth() % 3 === 0; // Every quarter
+          
+          // Store the current date BEFORE incrementing
+          scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
           current.setMonth(current.getMonth() + 1);
-          break;
+          continue; // Skip the push at the end since we already did it
           
         case 'quarter':
           label = `Q${Math.floor(current.getMonth() / 3) + 1} ${current.getFullYear()}`;
           isMainTick = current.getMonth() === 0; // Every year
+          
+          // Store the current date BEFORE incrementing
+          scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
           current.setMonth(current.getMonth() + 3);
-          break;
+          continue; // Skip the push at the end since we already did it
       }
-      
-      scale.push({ date: new Date(current), label, isMainTick, showLabel, monthLabel });
     }
     
     return scale;
@@ -131,6 +141,8 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     const timelineEnd = normalizeDateString(timelineBounds.end);
     const taskStart = normalizeDateString(task.start);
     const taskEnd = normalizeDateString(task.end);
+    
+
     
     const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
     const taskStartOffset = taskStart.getTime() - timelineStart.getTime();
@@ -151,17 +163,219 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
     return formatDuration(days);
   };
 
+  // Month navigation functions
+  const scrollToMonth = useCallback((targetMonth: Date) => {
+    if (!scrollContainerRef.current) return;
+
+    const timelineStart = normalizeDateString(timelineBounds.start);
+    const timelineEnd = normalizeDateString(timelineBounds.end);
+    const targetDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+    
+    const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
+    const targetOffset = targetDate.getTime() - timelineStart.getTime();
+    const scrollPercentage = Math.max(0, Math.min(1, targetOffset / totalDuration));
+    
+    const containerWidth = scrollContainerRef.current.clientWidth;
+    const scrollableWidth = scrollContainerRef.current.scrollWidth - containerWidth;
+    const scrollPosition = scrollPercentage * scrollableWidth;
+    
+    // Center the target month in the view
+    const centeredPosition = Math.max(0, scrollPosition - containerWidth * 0.2);
+    
+    scrollContainerRef.current.scrollTo({
+      left: centeredPosition,
+      behavior: 'smooth'
+    });
+    
+    // Also scroll the header to maintain sync
+    if (headerScrollRef.current) {
+      headerScrollRef.current.scrollTo({
+        left: centeredPosition,
+        behavior: 'smooth'
+      });
+    }
+  }, [timelineBounds]);
+
+  const scrollToPreviousMonth = useCallback(() => {
+    const prevMonth = new Date(currentMonth);
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    setCurrentMonth(prevMonth);
+    scrollToMonth(prevMonth);
+  }, [currentMonth, scrollToMonth]);
+
+  const scrollToNextMonth = useCallback(() => {
+    const nextMonth = new Date(currentMonth);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    setCurrentMonth(nextMonth);
+    scrollToMonth(nextMonth);
+  }, [currentMonth, scrollToMonth]);
+
+  const scrollToToday = useCallback(() => {
+    const today = new Date();
+    setCurrentMonth(today);
+    scrollToMonth(today);
+  }, [scrollToMonth]);
+
+  // Initialize scroll position to current month on mount
+  useEffect(() => {
+    if (scrollContainerRef.current && tasks.length > 0) {
+      // Set initial month to first task's month or current month
+      const firstTask = tasks.sort((a, b) => a.start.getTime() - b.start.getTime())[0];
+      const initialMonth = firstTask ? firstTask.start : new Date();
+      setCurrentMonth(initialMonth);
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => scrollToMonth(initialMonth), 100);
+    }
+  }, [tasks, timelineBounds, scrollToMonth]);
+
+  // Sync header scroll with content scroll and update current month
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      // Sync header scroll with content scroll
+      if (headerScrollRef.current) {
+        headerScrollRef.current.scrollLeft = scrollContainer.scrollLeft;
+      }
+      
+      // Fallback: Also try to find header by data attribute if ref fails
+      if (!headerScrollRef.current) {
+        const headerElement = document.querySelector('[data-header-content]') as HTMLElement;
+        if (headerElement && headerElement.parentElement) {
+          headerElement.parentElement.scrollLeft = scrollContainer.scrollLeft;
+        }
+      }
+
+      // Update current month based on scroll position
+      const scrollPercentage = scrollContainer.scrollLeft / (scrollContainer.scrollWidth - scrollContainer.clientWidth);
+      const timelineStart = normalizeDateString(timelineBounds.start);
+      const timelineEnd = normalizeDateString(timelineBounds.end);
+      const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
+      const currentTime = timelineStart.getTime() + (scrollPercentage * totalDuration);
+      const visibleMonth = new Date(currentTime);
+      
+      // Only update if month actually changed to avoid unnecessary re-renders
+      if (visibleMonth.getMonth() !== currentMonth.getMonth() || 
+          visibleMonth.getFullYear() !== currentMonth.getFullYear()) {
+        setCurrentMonth(visibleMonth);
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [timelineBounds, currentMonth]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.target !== document.body) return; // Only handle when no input is focused
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            scrollToPreviousMonth();
+          }
+          break;
+        case 'ArrowRight':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            scrollToNextMonth();
+          }
+          break;
+        case 'Home':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            scrollToToday();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [scrollToPreviousMonth, scrollToNextMonth, scrollToToday]);
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Timeline Header */}
+      {/* Navigation Controls */}
       <Box sx={{ 
-        height: viewMode === 'day' ? '80px' : '60px', 
-        borderBottom: '2px solid #e0e0e0',
-        backgroundColor: 'white',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1
+        height: '40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        px: 2,
+        backgroundColor: '#f8f9fa',
+        borderBottom: '1px solid #e0e0e0'
       }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Previous Month">
+            <IconButton size="small" onClick={scrollToPreviousMonth}>
+              <ChevronLeft />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Next Month">
+            <IconButton size="small" onClick={scrollToNextMonth}>
+              <ChevronRight />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Go to Today">
+            <IconButton size="small" onClick={scrollToToday}>
+              <Today />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Box sx={{ 
+          fontSize: '0.875rem', 
+          fontWeight: 'medium',
+          color: '#1976d2',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <Box>
+            {currentMonth.toLocaleDateString('en-US', { 
+              month: 'long', 
+              year: 'numeric' 
+            })}
+          </Box>
+          <Box sx={{ 
+            fontSize: '0.75rem', 
+            color: '#666',
+            fontWeight: 'normal'
+          }}>
+            (Use Ctrl+← → or buttons to navigate)
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Timeline Header */}
+      <Box 
+        ref={headerScrollRef}
+        sx={{ 
+          height: viewMode === 'day' ? '80px' : '60px', 
+          borderBottom: '2px solid #e0e0e0',
+          backgroundColor: 'white',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1,
+          overflow: 'auto',
+          '&::-webkit-scrollbar': {
+            display: 'none' // Hide scrollbar but keep scrolling functionality
+          },
+          scrollbarWidth: 'none', // Firefox
+          msOverflowStyle: 'none' // IE/Edge
+        }}
+      >
+        <Box 
+          data-header-content
+          sx={{ 
+            minWidth: viewMode === 'day' ? '800%' : viewMode === 'week' ? '400%' : '200%', // Adjusted for fixed-width cells
+            height: '100%'
+          }}
+        >
         {viewMode === 'day' ? (
           // Two-row header for daily view
           <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -194,14 +408,18 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       paddingLeft: '4px',
                       display: 'flex',
                       alignItems: 'center',
-                      backgroundColor: '#f5f5f5'
+                      backgroundColor: '#f5f5f5',
+                      minWidth: '80px', // Consistent with day cell groupings
+                      overflow: 'hidden'
                     }}
                   >
                     <Box sx={{
                       fontSize: '0.75rem',
                       fontWeight: 'bold',
                       color: '#1976d2',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}>
                       {tick.monthLabel}
                     </Box>
@@ -226,6 +444,9 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                 const position = ((tickDate.getTime() - timelineStart.getTime()) / 
                   (timelineEnd.getTime() - timelineStart.getTime())) * 100;
                 
+                // Check if it's a weekend for styling
+                const isWeekend = tickDate.getDay() === 0 || tickDate.getDay() === 6; // Sunday or Saturday
+                
                 return (
                   <Box
                     key={`day-${index}`}
@@ -234,21 +455,28 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                       left: `${position}%`,
                       height: '100%',
                       borderLeft: tick.isMainTick ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                      paddingLeft: '2px',
+                      width: '50px',
+                      overflow: 'hidden',
+                      backgroundColor: isWeekend ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
-                      minWidth: '25px'
+                      paddingLeft: '4px', // Simple left padding for now
+                      fontSize: '0.75rem',
+                      fontWeight: tick.isMainTick ? 'bold' : 'normal',
+                      color: isWeekend 
+                        ? (tick.isMainTick ? '#1976d2' : '#999') 
+                        : (tick.isMainTick ? '#1976d2' : '#666'),
+                      lineHeight: 1,
+                      userSelect: 'none',
+                      
+                      '&:hover': {
+                        backgroundColor: isWeekend 
+                          ? 'rgba(25, 118, 210, 0.12)' 
+                          : 'rgba(25, 118, 210, 0.08)'
+                      }
                     }}
                   >
-                    <Box sx={{
-                      fontSize: '0.7rem',
-                      fontWeight: tick.isMainTick ? 'bold' : 'normal',
-                      color: tick.isMainTick ? '#1976d2' : '#666',
-                      textAlign: 'center',
-                      width: '20px'
-                    }}>
-                      {tick.label}
-                    </Box>
+                    {tick.label}
                   </Box>
                 );
               })}
@@ -280,16 +508,18 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
                     left: `${position}%`,
                     height: '100%',
                     borderLeft: tick.isMainTick ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                    paddingLeft: '4px',
+                    paddingLeft: viewMode === 'week' ? '12px' : '8px', // More padding for week view
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    minWidth: viewMode === 'week' ? '100px' : '50px' // Much larger cells for week view
                   }}
                 >
                   <Box sx={{
-                    fontSize: '0.75rem',
+                    fontSize: viewMode === 'week' ? '1rem' : '0.9rem', // Larger font for week view
                     fontWeight: tick.isMainTick ? 'bold' : 'normal',
                     color: tick.isMainTick ? '#1976d2' : '#666',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    minWidth: viewMode === 'week' ? '80px' : '40px' // Ensure text has enough space
                   }}>
                     {tick.label}
                   </Box>
@@ -298,10 +528,36 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
             })}
           </Box>
         )}
+        </Box>
       </Box>
 
       {/* Task Bars */}
-      <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+      <Box 
+        ref={scrollContainerRef}
+        sx={{ 
+          flex: 1, 
+          overflow: 'auto', 
+          position: 'relative',
+          '&::-webkit-scrollbar': {
+            height: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f1f1f1',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#c1c1c1',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            backgroundColor: '#a8a8a8',
+          }
+        }}
+      >
+        <Box sx={{ 
+          minWidth: viewMode === 'day' ? '800%' : viewMode === 'week' ? '400%' : '200%', // Match header width
+          height: `${Math.max(tasks.length * 50 + 50, 400)}px`, // Dynamic height based on task count
+          position: 'relative'
+        }}>
         {tasks.map((task, index) => {
           const position = getTaskPosition(task);
           const color = getTaskColor(task);
@@ -466,6 +722,7 @@ export const GanttTimeline: React.FC<GanttTimelineProps> = ({
           }
           return null;
         })()}
+        </Box>
       </Box>
     </Box>
   );
