@@ -6,3 +6,5 @@ export { WorkloadInsights } from './WorkloadInsights';
 export { WorkloadTeamView } from './WorkloadTeamView';
 export { WorkloadQuickActions } from './WorkloadQuickActions';
 export { WorkloadDashboard } from './WorkloadDashboard';
+export { WorkloadImpactPreview } from './WorkloadImpactPreview';
+export { CapacityIndicator } from './CapacityIndicator';

@@ -18,6 +18,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { TaskStatus, TaskPriority, Project, Task } from '@task-manager/shared';
 import { ProjectSelector } from './ProjectSelector';
 import { AssigneeSelector, ProjectMemberWithUser } from './AssigneeSelector';
+import { WorkloadAwareAssigneeSelector } from './WorkloadAwareAssigneeSelector';
 import { TaskDependencySelector } from './TaskDependencySelector';
 
 export interface TaskCreateData {
@@ -44,6 +45,8 @@ interface TaskCreateFormProps {
   onProjectChange?: (projectId: string) => void;
   onUnsavedChanges?: (hasChanges: boolean) => void;
   isEditMode?: boolean;
+  taskId?: string; // For workload-aware assignment
+  useWorkloadAwareAssignment?: boolean;
 }
 
 export const TaskCreateForm: React.FC<TaskCreateFormProps> = ({
@@ -56,7 +59,9 @@ export const TaskCreateForm: React.FC<TaskCreateFormProps> = ({
   loading = false,
   onProjectChange,
   onUnsavedChanges,
-  isEditMode = false
+  isEditMode = false,
+  taskId,
+  useWorkloadAwareAssignment = true
 }) => {
   const [formData, setFormData] = useState<TaskCreateData>({
     title: '',
@@ -251,14 +256,28 @@ export const TaskCreateForm: React.FC<TaskCreateFormProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <AssigneeSelector
-              value={formData.assigneeId}
-              onChange={(userId) => handleFieldChange('assigneeId', userId)}
-              projectMembers={projectMembers}
-              loading={loading}
-              disabled={loading || !formData.projectId}
-              allowUnassigned
-            />
+            {useWorkloadAwareAssignment && taskId ? (
+              <WorkloadAwareAssigneeSelector
+                value={formData.assigneeId}
+                onChange={(userId) => handleFieldChange('assigneeId', userId)}
+                projectMembers={projectMembers}
+                taskId={taskId}
+                loading={loading}
+                disabled={loading || !formData.projectId}
+                allowUnassigned
+                showSuggestions={true}
+                showWorkloadImpact={true}
+              />
+            ) : (
+              <AssigneeSelector
+                value={formData.assigneeId}
+                onChange={(userId) => handleFieldChange('assigneeId', userId)}
+                projectMembers={projectMembers}
+                loading={loading}
+                disabled={loading || !formData.projectId}
+                allowUnassigned
+              />
+            )}
           </Grid>
 
           {/* Status and Priority Section */}

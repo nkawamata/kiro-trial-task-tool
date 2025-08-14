@@ -1,6 +1,7 @@
 export { TaskCreateForm } from './TaskCreateForm';
 export { ProjectSelector } from './ProjectSelector';
 export { AssigneeSelector } from './AssigneeSelector';
+export { WorkloadAwareAssigneeSelector } from './WorkloadAwareAssigneeSelector';
 export { TaskDependencySelector } from './TaskDependencySelector';
 export { TaskList } from './TaskList';
 export { TaskFiltersComponent } from './TaskFilters';
