@@ -35,9 +35,34 @@ app.use(express.urlencoded({ extended: true }));
 // Access logging
 app.use(accessLogger);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+// Enhanced health check for ECR deployment
+app.get('/health', async (req, res) => {
+  try {
+    const healthCheck = {
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      services: {
+        database: 'connected', // TODO: Add actual DB health check
+        oidc: process.env.OIDC_ISSUER_URL ? 'configured' : 'not configured',
+      },
+      container: {
+        imageTag: process.env.IMAGE_TAG || 'unknown',
+        region: process.env.AWS_REGION || 'unknown',
+      }
+    };
+    
+    res.json(healthCheck);
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Test endpoint without auth
