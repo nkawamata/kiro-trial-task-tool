@@ -30,7 +30,6 @@ import { WorkloadCalendar } from './WorkloadCalendar';
 import { WorkloadTeamView } from './WorkloadTeamView';
 import { WorkloadChart } from './WorkloadChart';
 import { WorkloadInsights } from './WorkloadInsights';
-import { WorkloadQuickActions } from './WorkloadQuickActions';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -58,8 +57,8 @@ interface WorkloadDashboardProps {
   onAllocateWork: () => void;
   selectedProject: string;
   onProjectChange: (projectId: string) => void;
-  dateRange: 'week' | 'month' | 'quarter';
-  onDateRangeChange: (range: 'week' | 'month' | 'quarter') => void;
+  dateRange: 'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks';
+  onDateRangeChange: (range: 'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks') => void;
 }
 
 export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
@@ -110,11 +109,12 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
             <Select
               value={dateRange}
               label="Time Range"
-              onChange={(e) => onDateRangeChange(e.target.value as 'week' | 'month' | 'quarter')}
+              onChange={(e) => onDateRangeChange(e.target.value as 'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks')}
             >
-              <MenuItem value="week">This Week</MenuItem>
-              <MenuItem value="month">Last 30 Days</MenuItem>
-              <MenuItem value="quarter">Last 90 Days</MenuItem>
+              <MenuItem value="thisWeek">This Week</MenuItem>
+              <MenuItem value="nextWeek">Next Week</MenuItem>
+              <MenuItem value="afterTwoWeeks">After Two Weeks</MenuItem>
+              <MenuItem value="afterThreeWeeks">After Three Weeks</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -126,13 +126,7 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
         </Alert>
       )}
 
-      {/* Quick Actions */}
-      <Box sx={{ mb: 3 }}>
-        <WorkloadQuickActions
-          onRefresh={onRefresh}
-          onAllocateWork={onAllocateWork}
-        />
-      </Box>
+
 
       {/* Main Content Tabs */}
       <Card>

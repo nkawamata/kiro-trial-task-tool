@@ -8,7 +8,7 @@ import {
 import {
   WorkOutline as WorkloadIcon,
 } from '@mui/icons-material';
-import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import { format, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { RootState, AppDispatch } from '../store';
 import { fetchWorkloadSummary, fetchWorkloadDistribution, fetchTeamWorkload, fetchWorkloadEntries } from '../store/slices/workloadSlice';
 import { fetchProjects } from '../store/slices/projectsSlice';
@@ -22,25 +22,34 @@ export const WorkloadView: React.FC = () => {
   const { summary, distribution, loading } = useSelector((state: RootState) => state.workload);
 
   const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter'>('week');
+  const [dateRange, setDateRange] = useState<'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks'>('thisWeek');
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const getDateRange = useCallback(() => {
     const now = new Date();
     let startDate: Date;
-    let endDate: Date = now;
+    let endDate: Date;
 
     switch (dateRange) {
-      case 'week':
+      case 'thisWeek':
         startDate = startOfWeek(now);
         endDate = endOfWeek(now);
         break;
-      case 'month':
-        startDate = subDays(now, 30);
+      case 'nextWeek':
+        const nextWeekStart = addWeeks(now, 1);
+        startDate = startOfWeek(nextWeekStart);
+        endDate = endOfWeek(nextWeekStart);
         break;
-      case 'quarter':
-        startDate = subDays(now, 90);
+      case 'afterTwoWeeks':
+        const twoWeeksStart = addWeeks(now, 2);
+        startDate = startOfWeek(twoWeeksStart);
+        endDate = endOfWeek(twoWeeksStart);
+        break;
+      case 'afterThreeWeeks':
+        const threeWeeksStart = addWeeks(now, 3);
+        startDate = startOfWeek(threeWeeksStart);
+        endDate = endOfWeek(threeWeeksStart);
         break;
       default:
         startDate = startOfWeek(now);
