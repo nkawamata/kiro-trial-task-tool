@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Grid, Card, CardContent, Button, Chip, CardActionArea, IconButton } from '@mui/material';
-import { Add as AddIcon, Dashboard as DashboardIcon, Edit as EditIcon, Assignment as TaskIcon } from '@mui/icons-material';
+import { Add as AddIcon, Dashboard as DashboardIcon, Edit as EditIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../store';
 import { fetchProjects } from '../store/slices/projectsSlice';
+import { fetchAllTasks } from '../store/slices/tasksSlice';
 import { CreateProjectDialog, UpdateProjectDialog } from '../components/projects';
+import { QuickStats } from '../components/dashboard';
 import { Project } from '@task-manager/shared';
 
 export const Dashboard: React.FC = () => {
@@ -36,6 +38,7 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchProjects());
+    dispatch(fetchAllTasks());
   }, [dispatch]);
 
   return (
@@ -129,40 +132,7 @@ export const Dashboard: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Stats
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
-                  <Typography variant="h4" color="primary">
-                    {projects.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Active Projects
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="h4" color="secondary">
-                    0
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Tasks Due Today
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<TaskIcon />}
-                  onClick={() => navigate('/tasks/create')}
-                  fullWidth
-                  sx={{ mt: 2 }}
-                >
-                  Create Task
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+          <QuickStats />
         </Grid>
       </Grid>
 

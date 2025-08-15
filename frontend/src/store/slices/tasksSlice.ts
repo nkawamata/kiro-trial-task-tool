@@ -22,6 +22,14 @@ export const fetchProjectTasks = createAsyncThunk(
   }
 );
 
+export const fetchAllTasks = createAsyncThunk(
+  'tasks/fetchAllTasks',
+  async () => {
+    const response = await apiClient.get('/tasks/user');
+    return response.data.tasks;
+  }
+);
+
 export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (taskData: Partial<Task>) => {
@@ -66,6 +74,17 @@ const tasksSlice = createSlice({
       .addCase(fetchProjectTasks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch tasks';
+      })
+      .addCase(fetchAllTasks.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAllTasks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchAllTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch all tasks';
       })
       .addCase(createTask.fulfilled, (state, action) => {
         state.tasks.push(action.payload);
