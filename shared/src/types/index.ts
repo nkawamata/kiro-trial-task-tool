@@ -36,6 +36,15 @@ export interface Task {
   updatedAt: Date;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ProjectMember {
   id: string;
   projectId: string;

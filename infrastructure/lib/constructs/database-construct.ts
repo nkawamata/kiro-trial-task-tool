@@ -12,6 +12,7 @@ export class DatabaseConstruct extends Construct {
   public readonly projectsTable: dynamodb.Table;
   public readonly tasksTable: dynamodb.Table;
   public readonly usersTable: dynamodb.Table;
+  public readonly taskCommentsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: DatabaseConstructProps) {
     super(scope, id);
@@ -94,8 +95,28 @@ export class DatabaseConstruct extends Construct {
       partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
     });
 
+    // Task Comments Table
+    this.taskCommentsTable = new dynamodb.Table(this, 'TaskCommentsTable', {
+      tableName: `task-manager-task-comments-${environment}`,
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
+      encryptionKey: kmsKey,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      removalPolicy,
+    });
+
+    // Add GSI for task-based comment queries
+    this.taskCommentsTable.addGlobalSecondaryIndex({
+      indexName: 'TaskIndex',
+      partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+    });
+
     // Add tags to all tables
-    const tables = [this.projectsTable, this.tasksTable, this.usersTable];
+    const tables = [this.projectsTable, this.tasksTable, this.usersTable, this.taskCommentsTable];
     tables.forEach(table => {
       cdk.Tags.of(table).add('Environment', environment);
       cdk.Tags.of(table).add('Service', 'TaskManager');

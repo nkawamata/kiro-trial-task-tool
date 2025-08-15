@@ -238,6 +238,76 @@ async function createWorkloadTable() {
   console.log(`Created table ${TABLES.WORKLOAD}`);
 }
 
+
+async function createTaskCommentsTable() {
+  console.log(`Creating table: ${TABLES.TASK_COMMENTS}`);
+
+  if (await tableExists(TABLES.TASK_COMMENTS)) {
+    console.log(`Table ${TABLES.TASK_COMMENTS} already exists`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: TABLES.TASK_COMMENTS,
+    KeySchema: [
+      {
+        AttributeName: 'id',
+        KeyType: 'HASH'
+      }
+    ],
+    AttributeDefinitions: [
+      {
+        AttributeName: 'id',
+        AttributeType: 'S'
+      },
+      {
+        AttributeName: 'taskId',
+        AttributeType: 'S'
+      },
+      {
+        AttributeName: 'createdAt',
+        AttributeType: 'S'
+      }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'TaskIndex',
+        KeySchema: [
+          {
+            AttributeName: 'taskId',
+            KeyType: 'HASH'
+          },
+          {
+            AttributeName: 'createdAt',
+            KeyType: 'RANGE'
+          }
+        ],
+        Projection: {
+          ProjectionType: 'ALL'
+        },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      }
+    ],
+    BillingMode: 'PROVISIONED',
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 5,
+      WriteCapacityUnits: 5
+    }
+  });
+
+  try {
+    await client.send(command);
+    console.log(`✅ Table ${TABLES.TASK_COMMENTS} created successfully`);
+  } catch (error) {
+    console.error(`❌ Error creating table ${TABLES.TASK_COMMENTS}:`, error);
+    throw error;
+  }
+}
+
+
 async function createAllTables() {
   try {
     console.log('Creating DynamoDB tables...');
@@ -247,6 +317,7 @@ async function createAllTables() {
     await createTasksTable();
     await createProjectMembersTable();
     await createWorkloadTable();
+    await createTaskCommentsTable();
 
     console.log('All tables created successfully!');
   } catch (error) {

@@ -94,6 +94,26 @@ export class TaskManagerStack extends cdk.Stack {
       partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
     });
 
+    // Task Comments Table
+    const taskCommentsTable = new dynamodb.Table(this, 'TaskCommentsTable', {
+      tableName: `task-manager-task-comments-${config.environment}`,
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
+      encryptionKey: kmsKey,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for task-based comment queries
+    taskCommentsTable.addGlobalSecondaryIndex({
+      indexName: 'TaskIndex',
+      partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+    });
+
     // ECR Repository for Backend Container
     const ecrRepository = config.ecrRepositoryName
       ? ecr.Repository.fromRepositoryName(this, 'BackendRepository', config.ecrRepositoryName)
@@ -134,6 +154,7 @@ export class TaskManagerStack extends cdk.Stack {
     projectsTable.grantReadWriteData(appRunnerRole);
     tasksTable.grantReadWriteData(appRunnerRole);
     usersTable.grantReadWriteData(appRunnerRole);
+    taskCommentsTable.grantReadWriteData(appRunnerRole);
 
     // Grant KMS permissions
     kmsKey.grantEncryptDecrypt(appRunnerRole);
@@ -180,6 +201,10 @@ export class TaskManagerStack extends cdk.Stack {
               {
                 name: 'DYNAMODB_USERS_TABLE',
                 value: usersTable.tableName,
+              },
+              {
+                name: 'DYNAMODB_TASK_COMMENTS_TABLE',
+                value: taskCommentsTable.tableName,
               },
               {
                 name: 'KMS_KEY_ID',
@@ -306,6 +331,12 @@ export class TaskManagerStack extends cdk.Stack {
       value: usersTable.tableName,
       description: 'DynamoDB Users Table Name',
       exportName: `TaskManager-${config.environment}-UsersTable`,
+    });
+
+    new cdk.CfnOutput(this, 'TaskCommentsTableName', {
+      value: taskCommentsTable.tableName,
+      description: 'DynamoDB Task Comments Table Name',
+      exportName: `TaskManager-${config.environment}-TaskCommentsTable`,
     });
 
     new cdk.CfnOutput(this, 'KmsKeyId', {

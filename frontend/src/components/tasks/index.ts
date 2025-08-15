@@ -5,6 +5,7 @@ export { WorkloadAwareAssigneeSelector } from './WorkloadAwareAssigneeSelector';
 export { TaskDependencySelector } from './TaskDependencySelector';
 export { TaskList } from './TaskList';
 export { TaskFiltersComponent } from './TaskFilters';
+export { TaskComments } from './TaskComments';
 export type { TaskCreateData } from './TaskCreateForm';
 export type { ProjectMemberWithUser } from './AssigneeSelector';
 export type { TaskFilters } from './TaskFilters';

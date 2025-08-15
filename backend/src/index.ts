@@ -13,6 +13,7 @@ import { userRoutes } from './routes/users';
 import { workloadRoutes } from './routes/workload';
 import { ganttRoutes } from './routes/gantt';
 import { teamRoutes } from './routes/team';
+import { taskCommentRoutes } from './routes/taskComments';
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 import { accessLogger, errorLogger } from './middleware/logger';
@@ -110,6 +111,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/workload', authMiddleware, workloadRoutes);
 app.use('/api/gantt', authMiddleware, ganttRoutes);
 app.use('/api/team', authMiddleware, teamRoutes);
+app.use('/api/comments', authMiddleware, taskCommentRoutes);
 
 
 
