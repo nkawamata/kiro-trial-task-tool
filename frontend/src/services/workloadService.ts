@@ -73,6 +73,27 @@ export class WorkloadService {
     return response.data.entries;
   }
 
+  static async getTaskWorkloadEntries(
+    taskId: string,
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadEntry[]> {
+    const allEntries = await this.getWorkloadByDateRange(userId, startDate, endDate);
+    return allEntries.filter(entry => entry.taskId === taskId);
+  }
+
+  static async getAllTaskWorkloadEntries(
+    taskId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadEntry[]> {
+    const response = await apiClient.get(`/workload/task/${taskId}`, {
+      params: { startDate, endDate }
+    });
+    return response.data.entries;
+  }
+
   static async deleteWorkloadAllocation(workloadId: string): Promise<void> {
     await apiClient.delete(`/workload/${workloadId}`);
   }

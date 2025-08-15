@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from './store';
 import { setUser, clearUser } from './store/slices/authSlice';
 import { useApiAuth } from './hooks/useApiAuth';
+import { useAutoUserCreation } from './hooks/useAutoUserCreation';
 
 import { AuthWrapper } from './components/auth/AuthWrapper';
 import { Layout } from './components/layout/Layout';
@@ -21,30 +22,19 @@ import { AuthCallback } from './components/auth/AuthCallback';
 function App() {
   const auth = useAuth();
   const dispatch = useDispatch<AppDispatch>();
+  const { dbUser } = useAutoUserCreation();
   
   // Set up API authentication
   useApiAuth();
 
   useEffect(() => {
-    if (auth.isAuthenticated && auth.user) {
-      // Safely access user properties with fallbacks
-      const userAny = auth.user as any;
-      
-      // Access user claims from the profile or directly from user object
-      const userProfile = userAny.profile || userAny;
-      
-      dispatch(setUser({
-        id: userProfile.sub || userAny.sub || 'unknown',
-        email: userProfile.email || userProfile.preferred_username || userAny.email || '',
-        name: userProfile.name || userProfile.given_name || userProfile.preferred_username || userAny.name || 'User',
-        cognitoId: userProfile.sub || userAny.sub || 'unknown',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+    if (auth.isAuthenticated && dbUser) {
+      // Use the database user instead of creating one from Cognito data
+      dispatch(setUser(dbUser));
     } else {
       dispatch(clearUser());
     }
-  }, [auth.isAuthenticated, auth.user, dispatch]);
+  }, [auth.isAuthenticated, dbUser, dispatch]);
 
   if (auth.isLoading) {
     return <AuthWrapper />;

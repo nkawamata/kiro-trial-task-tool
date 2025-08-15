@@ -305,4 +305,36 @@ export class WorkloadService {
 
     await dynamoDb.send(command);
   }
+
+  async getTaskWorkloadEntries(
+    taskId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadEntry[]> {
+    // Since we don't have a taskId index, we'll need to scan the table
+    // In a production system, you'd want to add a GSI for taskId
+    const command = new ScanCommand({
+      TableName: TABLES.WORKLOAD,
+      FilterExpression: 'taskId = :taskId AND #date BETWEEN :startDate AND :endDate',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      },
+      ExpressionAttributeValues: {
+        ':taskId': taskId,
+        ':startDate': startDate,
+        ':endDate': endDate
+      }
+    });
+
+    const result = await dynamoDb.send(command);
+    return (result.Items || []).map(item => ({
+      id: item.id,
+      userId: item.userId,
+      projectId: item.projectId,
+      taskId: item.taskId,
+      date: parseISO(item.date),
+      allocatedHours: item.allocatedHours,
+      actualHours: item.actualHours
+    })) as WorkloadEntry[];
+  }
 }

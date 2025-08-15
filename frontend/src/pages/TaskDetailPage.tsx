@@ -25,7 +25,7 @@ import {
 } from '@mui/icons-material';
 import { taskService } from '../services/taskService';
 import { userService } from '../services/userService';
-import { TaskComments } from '../components/tasks';
+import { TaskComments, TaskAllocation } from '../components/tasks';
 import { Task, TaskStatus, TaskPriority, User } from '@task-manager/shared';
 
 const getStatusColor = (status: TaskStatus) => {
@@ -275,6 +275,11 @@ export const TaskDetailPage: React.FC = () => {
             </Typography>
           </Grid>
         </Grid>
+      </Paper>
+
+      {/* Task Allocation Section */}
+      <Paper elevation={1} sx={{ p: 4, borderRadius: 2, mt: 3 }}>
+        <TaskAllocation taskId={task.id} assigneeId={task.assigneeId} assignee={assignee || undefined} />
       </Paper>
 
       {/* Comments Section */}

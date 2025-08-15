@@ -80,6 +80,24 @@ router.get('/entries', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get workload entries for a specific task
+router.get('/task/:taskId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    const entries = await workloadService.getTaskWorkloadEntries(
+      taskId,
+      startDate as string,
+      endDate as string
+    );
+    
+    res.json({ entries });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update actual hours for a workload entry
 router.patch('/:workloadId', async (req: AuthenticatedRequest, res, next) => {
   try {
