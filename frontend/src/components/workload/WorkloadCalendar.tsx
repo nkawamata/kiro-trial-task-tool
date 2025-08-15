@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Chip,
   IconButton,
   Button,
@@ -150,51 +149,89 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
       const isCurrentDay = isToday(currentDay);
 
       days.push(
-        <Grid item xs key={currentDay.toString()}>
-          <Card
-            sx={{
-              minHeight: 80,
-              cursor: 'pointer',
-              opacity: isCurrentMonth ? 1 : 0.3,
-              border: isCurrentDay ? 2 : 0,
-              borderColor: 'primary.main',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-              },
-            }}
-            onClick={() => {
-              setSelectedDate(currentDay);
-              setAllocationDialogOpen(true);
-            }}
-          >
-            <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                <Typography variant="body2" fontWeight={isCurrentDay ? 'bold' : 'normal'}>
-                  {format(currentDay, 'd')}
-                </Typography>
-                {workloadHours > 0 && (
-                  <Chip
-                    label={`${workloadHours}h`}
-                    size="small"
-                    color={getWorkloadColor(workloadHours)}
-                    sx={{ fontSize: '0.7rem', height: 20 }}
-                  />
-                )}
+        <Box
+          key={currentDay.toString()}
+          sx={{
+            minHeight: 120,
+            border: '1px solid',
+            borderColor: 'divider',
+            cursor: 'pointer',
+            opacity: isCurrentMonth ? 1 : 0.4,
+            backgroundColor: isCurrentDay ? 'primary.50' : 'background.paper',
+            position: 'relative',
+            '&:hover': {
+              backgroundColor: isCurrentDay ? 'primary.100' : 'action.hover',
+            },
+            display: 'flex',
+            flexDirection: 'column',
+            p: 1,
+          }}
+          onClick={() => {
+            setSelectedDate(currentDay);
+            setAllocationDialogOpen(true);
+          }}
+        >
+          {/* Day number */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+            <Typography 
+              variant="body2" 
+              fontWeight={isCurrentDay ? 'bold' : 'normal'}
+              color={isCurrentMonth ? 'text.primary' : 'text.disabled'}
+              sx={{
+                fontSize: '0.875rem',
+                lineHeight: 1.2,
+              }}
+            >
+              {format(currentDay, 'd')}
+            </Typography>
+            {isCurrentDay && (
+              <Box
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: 'primary.main',
+                }}
+              />
+            )}
+          </Box>
+
+          {/* Workload indicator */}
+          {workloadHours > 0 && (
+            <Box sx={{ mt: 'auto' }}>
+              <Chip
+                label={`${workloadHours}h`}
+                size="small"
+                color={getWorkloadColor(workloadHours)}
+                sx={{ 
+                  fontSize: '0.7rem', 
+                  height: 18,
+                  '& .MuiChip-label': {
+                    px: 0.5,
+                  }
+                }}
+              />
+              <Box 
+                sx={{ 
+                  height: 3, 
+                  backgroundColor: 'action.hover', 
+                  borderRadius: 1.5, 
+                  overflow: 'hidden',
+                  mt: 0.5,
+                }}
+              >
+                <Box
+                  sx={{
+                    height: '100%',
+                    width: `${Math.min((workloadHours / 8) * 100, 100)}%`,
+                    backgroundColor: workloadHours > 8 ? 'error.main' : 'primary.main',
+                    borderRadius: 1.5,
+                  }}
+                />
               </Box>
-              {workloadHours > 0 && (
-                <Box sx={{ height: 4, backgroundColor: 'action.hover', borderRadius: 2, overflow: 'hidden' }}>
-                  <Box
-                    sx={{
-                      height: '100%',
-                      width: `${Math.min((workloadHours / 8) * 100, 100)}%`,
-                      backgroundColor: workloadHours > 8 ? 'error.main' : 'primary.main',
-                    }}
-                  />
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+            </Box>
+          )}
+        </Box>
       );
 
       day = addDays(day, 1);
@@ -206,11 +243,31 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
   const renderWeekDays = () => {
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return weekDays.map((day) => (
-      <Grid item xs key={day}>
-        <Typography variant="subtitle2" align="center" sx={{ py: 1, fontWeight: 'bold' }}>
+      <Box
+        key={day}
+        sx={{
+          py: 1.5,
+          backgroundColor: 'grey.50',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderBottom: '2px solid',
+          borderBottomColor: 'divider',
+        }}
+      >
+        <Typography 
+          variant="subtitle2" 
+          align="center" 
+          sx={{ 
+            fontWeight: 'bold',
+            color: 'text.secondary',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
           {day}
         </Typography>
-      </Grid>
+      </Box>
     ));
   };
 
@@ -287,10 +344,20 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
             </Box>
           )}
 
-          <Grid container spacing={1}>
+          <Box 
+            sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(7, 1fr)',
+              gap: 0,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
+              overflow: 'hidden',
+            }}
+          >
             {renderWeekDays()}
             {renderCalendarDays()}
-          </Grid>
+          </Box>
 
           <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">
