@@ -28,7 +28,7 @@ export class WorkloadService {
         projects: []
       };
     }
-    
+
     const command = new QueryCommand({
       TableName: TABLES.WORKLOAD,
       IndexName: 'UserIdDateIndex',
@@ -177,25 +177,33 @@ export class WorkloadService {
       date = new Date();
     }
 
+    const dateString = format(date, 'yyyy-MM-dd');
+
+    console.log('Allocating workload:', {
+      userId: allocationData.userId,
+      projectId: allocationData.projectId,
+      taskId: allocationData.taskId,
+      date: dateString,
+      allocatedHours: allocationData.allocatedHours
+    });
+
     const workloadEntry: WorkloadEntry = {
       id: uuidv4(),
       userId: allocationData.userId!,
       projectId: allocationData.projectId!,
       taskId: allocationData.taskId!,
-      date: date,
+      date: dateString, // Store as string consistently
       allocatedHours: allocationData.allocatedHours || 8,
       actualHours: allocationData.actualHours
     };
 
     const command = new PutCommand({
       TableName: TABLES.WORKLOAD,
-      Item: {
-        ...workloadEntry,
-        date: format(workloadEntry.date, 'yyyy-MM-dd') // Store date as string for querying
-      }
+      Item: workloadEntry
     });
 
     await dynamoDb.send(command);
+    console.log('Workload allocated successfully:', workloadEntry);
     return workloadEntry;
   }
 
@@ -205,7 +213,7 @@ export class WorkloadService {
     const startDate = format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
 
     const summary = await this.getUserWorkloadSummary(userId, startDate, endDate);
-    
+
     const totalCapacity = 40; // 40 hours per week
     const allocated = summary.totalAllocatedHours;
     const available = Math.max(0, totalCapacity - allocated);
@@ -231,6 +239,8 @@ export class WorkloadService {
     startDate: string,
     endDate: string
   ): Promise<WorkloadEntry[]> {
+    console.log('Fetching workload entries for:', { userId, startDate, endDate });
+
     const command = new QueryCommand({
       TableName: TABLES.WORKLOAD,
       IndexName: 'UserIdDateIndex',
@@ -246,15 +256,18 @@ export class WorkloadService {
     });
 
     const result = await dynamoDb.send(command);
-    return (result.Items || []).map(item => ({
+    const entries = (result.Items || []).map(item => ({
       id: item.id,
       userId: item.userId,
       projectId: item.projectId,
       taskId: item.taskId,
-      date: parseISO(item.date),
+      date: item.date, // Keep as string for consistency
       allocatedHours: item.allocatedHours,
       actualHours: item.actualHours
     })) as WorkloadEntry[];
+
+    console.log('Found workload entries:', entries);
+    return entries;
   }
 
   async updateWorkloadActualHours(

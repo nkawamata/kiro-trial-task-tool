@@ -58,7 +58,7 @@ export interface WorkloadEntry {
   userId: string;
   projectId: string;
   taskId: string;
-  date: Date;
+  date: Date | string;
   allocatedHours: number;
   actualHours?: number;
 }

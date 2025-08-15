@@ -54,10 +54,15 @@ export const fetchWorkloadDistribution = createAsyncThunk(
 
 export const fetchWorkloadEntries = createAsyncThunk(
   'workload/fetchEntries',
-  async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-    const response = await apiClient.get('/workload/entries', {
-      params: { startDate, endDate }
-    });
+  async ({ startDate, endDate, userId }: { startDate: string; endDate: string; userId?: string }) => {
+    const params: any = { startDate, endDate };
+    if (userId) {
+      params.userId = userId;
+    }
+    
+    console.log('Fetching workload entries with params:', params);
+    
+    const response = await apiClient.get('/workload/entries', { params });
     return response.data.entries;
   }
 );
@@ -90,7 +95,12 @@ const workloadSlice = createSlice({
         state.distribution = action.payload;
       })
       .addCase(fetchWorkloadEntries.fulfilled, (state, action) => {
+        console.log('Workload entries fetched:', action.payload);
         state.entries = action.payload;
+      })
+      .addCase(fetchWorkloadEntries.rejected, (state, action) => {
+        console.error('Failed to fetch workload entries:', action.error);
+        state.error = action.error.message || 'Failed to fetch workload entries';
       });
   },
 });

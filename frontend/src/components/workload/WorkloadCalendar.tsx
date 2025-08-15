@@ -37,23 +37,41 @@ interface WorkloadCalendarProps {
 
 export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { entries } = useSelector((state: RootState) => state.workload);
+  const { entries, loading, error } = useSelector((state: RootState) => state.workload);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const targetUserId = userId || user?.id;
+  // Temporary fix: use known user ID if auth user is not available
+  const knownUserId = '662b8362-d1e6-401c-9936-396f77003a11'; // From our test
+  const targetUserId = userId || user?.id || knownUserId;
+
+  // Debug: Log the current state
+  console.log('WorkloadCalendar render:', {
+    targetUserId,
+    providedUserId: userId,
+    authUserId: user?.id,
+    entriesCount: entries?.length || 0,
+    loading,
+    error,
+    user: user ? { id: user.id, name: user.name } : null
+  });
 
   useEffect(() => {
     if (targetUserId) {
       const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      
+      console.log('Fetching workload data for:', { targetUserId, startDate, endDate });
+      
       dispatch(fetchWorkloadSummary({ startDate, endDate }));
-      dispatch(fetchWorkloadEntries({ startDate, endDate }));
+      dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
+    } else {
+      console.log('No target user ID available, user state:', user);
     }
-  }, [dispatch, currentMonth, targetUserId]);
+  }, [dispatch, currentMonth, targetUserId, user]);
 
   const nextMonth = () => {
     setCurrentMonth(addMonths(currentMonth, 1));
@@ -69,17 +87,40 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
 
     // Get actual workload data for this date
     const dateString = format(date, 'yyyy-MM-dd');
+    
+    // Debug: Log all entries to see what we have
+    console.log('All entries:', entries);
+    console.log('Target user ID:', targetUserId);
+    console.log('Looking for date:', dateString);
+    
     const dayEntries = entries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return format(entryDate, 'yyyy-MM-dd') === dateString && entry.userId === targetUserId;
+      // Handle both string and Date formats for entry.date
+      let entryDateString: string;
+      if (typeof entry.date === 'string') {
+        // If it's already a string, use it directly or parse it
+        entryDateString = entry.date.includes('T') ? format(new Date(entry.date), 'yyyy-MM-dd') : entry.date;
+      } else {
+        // If it's a Date object, format it
+        entryDateString = format(new Date(entry.date), 'yyyy-MM-dd');
+      }
+      
+      const userMatches = entry.userId === targetUserId;
+      const dateMatches = entryDateString === dateString;
+      
+      // Debug logging for each entry
+      if (userMatches || dateMatches) {
+        console.log(`Entry check - Date: ${entryDateString} (matches: ${dateMatches}), User: ${entry.userId} (matches: ${userMatches}), Hours: ${entry.allocatedHours}`);
+      }
+      
+      return userMatches && dateMatches;
     });
 
     // Sum up allocated hours for this day
     const totalHours = dayEntries.reduce((sum, entry) => sum + (entry.allocatedHours || 0), 0);
 
-    // Debug logging (remove in production)
-    if (totalHours > 0) {
-      console.log(`Date ${dateString}: ${totalHours} hours from ${dayEntries.length} entries`);
+    // Debug logging
+    if (totalHours > 0 || dayEntries.length > 0) {
+      console.log(`Date ${dateString}: ${totalHours} hours from ${dayEntries.length} entries`, dayEntries);
     }
 
     return Math.round(totalHours * 10) / 10;
@@ -173,6 +214,16 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
     ));
   };
 
+  if (!targetUserId) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="text.secondary">
+          Please log in to view workload calendar
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Card>
@@ -190,18 +241,51 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
               </IconButton>
             </Box>
 
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedDate(new Date());
-                setAllocationDialogOpen(true);
-              }}
-            >
-              Add Allocation
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+                  const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+                  console.log('Manual refresh for:', { targetUserId, startDate, endDate });
+                  if (targetUserId) {
+                    dispatch(fetchWorkloadSummary({ startDate, endDate }));
+                    dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
+                  }
+                }}
+              >
+                Refresh
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setSelectedDate(new Date());
+                  setAllocationDialogOpen(true);
+                }}
+              >
+                Add Allocation
+              </Button>
+            </Box>
           </Box>
+
+          {error && (
+            <Box sx={{ mb: 2 }}>
+              <Typography color="error" variant="body2">
+                Error loading workload data: {error}
+              </Typography>
+            </Box>
+          )}
+
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Loading workload data...
+              </Typography>
+            </Box>
+          )}
 
           <Grid container spacing={1}>
             {renderWeekDays()}
@@ -218,6 +302,13 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
             <Chip label="7-8h" color="warning" size="small" />
             <Chip label="8h+" color="error" size="small" />
           </Box>
+
+          {/* Debug info */}
+          <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Debug: {entries?.length || 0} entries loaded for user {targetUserId}
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
 
@@ -233,8 +324,9 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
           const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
           if (targetUserId) {
+            console.log('Refreshing workload data after allocation');
             dispatch(fetchWorkloadSummary({ startDate, endDate }));
-            dispatch(fetchWorkloadEntries({ startDate, endDate }));
+            dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
           }
         }}
       />

@@ -75,13 +75,17 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
     setError(null);
 
     try {
-      await apiClient.post('/workload/allocate', {
+      const allocationData = {
         userId: user.id,
         projectId: formData.projectId,
         taskId: formData.taskId,
         allocatedHours: formData.allocatedHours,
         date: formData.date.toISOString(),
-      });
+      };
+      
+      console.log('Allocating workload:', allocationData);
+      
+      await apiClient.post('/workload/allocate', allocationData);
 
       onSuccess?.();
       onClose();

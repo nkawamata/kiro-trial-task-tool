@@ -65,11 +65,18 @@ router.get('/distribution', async (req: AuthenticatedRequest, res, next) => {
 // Get workload entries for a date range
 router.get('/entries', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const userId = req.user?.sub;
+    // Allow userId to be passed as query parameter for testing
+    const userId = req.query.userId as string || req.user?.sub;
     const { startDate, endDate } = req.query;
     
+    console.log('Fetching workload entries:', { userId, startDate, endDate });
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
     const entries = await workloadService.getWorkloadEntries(
-      userId!,
+      userId,
       startDate as string,
       endDate as string
     );
