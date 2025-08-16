@@ -5,6 +5,8 @@ import { apiClient } from '../../services/apiClient';
 interface WorkloadState {
   summary: WorkloadSummary | null;
   teamWorkload: WorkloadSummary[];
+  allProjectsTeamSummary: WorkloadSummary[];
+  allProjectsDailyWorkload: { [userId: string]: { [date: string]: number } };
   distribution: any;
   entries: any[];
   dailyWorkload: { [userId: string]: { [date: string]: number } };
@@ -15,6 +17,8 @@ interface WorkloadState {
 const initialState: WorkloadState = {
   summary: null,
   teamWorkload: [],
+  allProjectsTeamSummary: [],
+  allProjectsDailyWorkload: {},
   distribution: null,
   entries: [],
   dailyWorkload: {},
@@ -43,6 +47,51 @@ export const fetchTeamWorkload = createAsyncThunk(
       params: { projectId, startDate, endDate }
     });
     return response.data.workload;
+  }
+);
+
+export const fetchAllProjectsTeamWorkloadSummary = createAsyncThunk(
+  'workload/fetchAllProjectsTeamWorkloadSummary',
+  async ({ startDate, endDate }: { 
+    startDate: string; 
+    endDate: string; 
+  }) => {
+    const response = await apiClient.get('/workload/team/all-projects', {
+      params: { startDate, endDate }
+    });
+    return response.data.workload;
+  }
+);
+
+export const fetchAllProjectsDailyWorkload = createAsyncThunk(
+  'workload/fetchAllProjectsDailyWorkload',
+  async ({ startDate, endDate }: { 
+    startDate: string; 
+    endDate: string; 
+  }, { rejectWithValue }) => {
+    try {
+      console.log('Fetching all projects daily workload:', { startDate, endDate });
+      
+      const response = await apiClient.get('/workload/team/all-projects/daily', {
+        params: { startDate, endDate },
+        timeout: 15000 // 15 second timeout for this specific request
+      });
+      
+      console.log('All projects daily workload response:', response.data);
+      return response.data.dailyWorkload;
+    } catch (error: any) {
+      console.error('Error fetching all projects daily workload:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return rejectWithValue('Request timeout - please try again');
+      }
+      
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to fetch all projects daily workload'
+      );
+    }
   }
 );
 
@@ -125,6 +174,22 @@ const workloadSlice = createSlice({
       })
       .addCase(fetchTeamWorkload.fulfilled, (state, action) => {
         state.teamWorkload = action.payload;
+      })
+      .addCase(fetchAllProjectsTeamWorkloadSummary.fulfilled, (state, action) => {
+        state.allProjectsTeamSummary = action.payload;
+      })
+      .addCase(fetchAllProjectsDailyWorkload.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllProjectsDailyWorkload.fulfilled, (state, action) => {
+        state.loading = false;
+        state.allProjectsDailyWorkload = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchAllProjectsDailyWorkload.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to fetch all projects daily workload';
       })
       .addCase(fetchWorkloadDistribution.fulfilled, (state, action) => {
         state.distribution = action.payload;

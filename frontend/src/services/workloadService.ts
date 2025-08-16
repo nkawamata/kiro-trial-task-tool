@@ -42,6 +42,16 @@ export class WorkloadService {
     return response.data.workload;
   }
 
+  static async getAllProjectsTeamWorkloadSummary(
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadSummary[]> {
+    const response = await apiClient.get('/workload/team/all-projects', {
+      params: { startDate, endDate }
+    });
+    return response.data.workload;
+  }
+
   static async getWorkloadDistribution(): Promise<WorkloadDistribution> {
     const response = await apiClient.get('/workload/distribution');
     return response.data.distribution;

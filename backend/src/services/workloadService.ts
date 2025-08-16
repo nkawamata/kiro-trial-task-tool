@@ -168,6 +168,119 @@ export class WorkloadService {
     }));
   }
 
+  async getAllProjectsTeamWorkloadSummary(
+    startDate: string,
+    endDate: string
+  ): Promise<WorkloadSummary[]> {
+    // Scan all workload entries for the date range
+    const command = new ScanCommand({
+      TableName: TABLES.WORKLOAD,
+      FilterExpression: '#date BETWEEN :startDate AND :endDate',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      },
+      ExpressionAttributeValues: {
+        ':startDate': startDate,
+        ':endDate': endDate
+      }
+    });
+
+    const result = await dynamoDb.send(command);
+    const workloadEntries = (result.Items || []) as WorkloadEntry[];
+
+    // Group by user and project
+    const userProjectMap = new Map<string, Map<string, { allocatedHours: number; actualHours: number; projectName: string }>>();
+    const userNamesMap = new Map<string, string>();
+
+    for (const entry of workloadEntries) {
+      // Get or create user map
+      if (!userProjectMap.has(entry.userId)) {
+        userProjectMap.set(entry.userId, new Map());
+
+        // Get user name
+        try {
+          const user = await this.userService.getUserProfile(entry.userId);
+          userNamesMap.set(entry.userId, user.name);
+        } catch (error) {
+          userNamesMap.set(entry.userId, 'Unknown User');
+        }
+      }
+
+      const userProjects = userProjectMap.get(entry.userId)!;
+
+      // Get or create project data
+      if (!userProjects.has(entry.projectId)) {
+        // Get project name
+        try {
+          const project = await this.projectService.getProject(entry.projectId, entry.userId);
+          userProjects.set(entry.projectId, {
+            allocatedHours: 0,
+            actualHours: 0,
+            projectName: project.name
+          });
+        } catch (error) {
+          userProjects.set(entry.projectId, {
+            allocatedHours: 0,
+            actualHours: 0,
+            projectName: 'Unknown Project'
+          });
+        }
+      }
+
+      const projectData = userProjects.get(entry.projectId)!;
+      projectData.allocatedHours += entry.allocatedHours;
+      projectData.actualHours += entry.actualHours || 0;
+    }
+
+    // Convert to WorkloadSummary format
+    return Array.from(userProjectMap.entries()).map(([userId, userProjects]) => {
+      const projects = Array.from(userProjects.entries()).map(([projectId, data]) => ({
+        projectId,
+        projectName: data.projectName,
+        allocatedHours: data.allocatedHours,
+        actualHours: data.actualHours
+      }));
+
+      const totalAllocatedHours = projects.reduce((sum, p) => sum + p.allocatedHours, 0);
+      const totalActualHours = projects.reduce((sum, p) => sum + p.actualHours, 0);
+
+      return {
+        userId,
+        userName: userNamesMap.get(userId) || 'Unknown User',
+        totalAllocatedHours,
+        totalActualHours,
+        projects
+      };
+    });
+  }
+
+  async getAllProjectsDailyWorkload(
+    startDate: string,
+    endDate: string
+  ): Promise<{ [userId: string]: { [date: string]: number } }> {
+    console.log('Fetching all projects daily workload:', { startDate, endDate });
+
+    // Scan all workload entries for the date range
+    const command = new ScanCommand({
+      TableName: TABLES.WORKLOAD,
+      FilterExpression: '#date BETWEEN :startDate AND :endDate',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      },
+      ExpressionAttributeValues: {
+        ':startDate': startDate,
+        ':endDate': endDate
+      }
+    });
+
+    console.log('Executing scan for all projects daily workload...');
+    const result = await dynamoDb.send(command);
+    console.log('Scan result:', { itemCount: result.Items?.length || 0 });
+
+    const workloadEntries = (result.Items || []) as WorkloadEntry[];
+    return this.processWorkloadEntries(workloadEntries);
+  }
+
   async allocateWorkload(allocationData: Partial<WorkloadEntry>): Promise<WorkloadEntry> {
     // Ensure date is properly parsed if it's a string
     let date: Date;

@@ -40,6 +40,54 @@ router.get('/team', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get team workload summary across all projects
+router.get('/team/all-projects', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: startDate, endDate' 
+      });
+    }
+    
+    const workload = await workloadService.getAllProjectsTeamWorkloadSummary(
+      startDate as string,
+      endDate as string
+    );
+    
+    res.json({ workload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get daily workload breakdown for all projects
+router.get('/team/all-projects/daily', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    console.log('All projects daily workload request received:', req.query);
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: startDate, endDate' 
+      });
+    }
+    
+    console.log('Calling workloadService.getAllProjectsDailyWorkload...');
+    const dailyWorkload = await workloadService.getAllProjectsDailyWorkload(
+      startDate as string,
+      endDate as string
+    );
+    
+    console.log('Sending response with all projects daily workload');
+    res.json({ dailyWorkload });
+  } catch (error) {
+    console.error('Error in all projects daily workload route:', error);
+    next(error);
+  }
+});
+
 // Test endpoint to check if workload table has any data
 router.get('/test', async (req: AuthenticatedRequest, res, next) => {
   try {
