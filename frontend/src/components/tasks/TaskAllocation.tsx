@@ -23,11 +23,13 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Person as PersonIcon,
-  AccessTime as TimeIcon
+  AccessTime as TimeIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { WorkloadEntry, User } from '@task-manager/shared';
 import { WorkloadService } from '../../services/workloadService';
 import { userService } from '../../services/userService';
+import { WorkloadAllocationDialog } from '../workload/WorkloadAllocationDialog';
 
 interface TaskAllocationProps {
   taskId: string;
@@ -46,6 +48,8 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState<string>(''); // ID of the allocation being saved
+  const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<WorkloadEntry | null>(null);
 
   useEffect(() => {
     loadTaskAllocations();
@@ -177,6 +181,22 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
     return 'info';
   };
 
+  const handleAddAllocation = () => {
+    setEditingEntry(null);
+    setAllocationDialogOpen(true);
+  };
+
+  const handleEditAllocation = (allocation: WorkloadEntry) => {
+    setEditingEntry(allocation);
+    setAllocationDialogOpen(true);
+  };
+
+  const handleAllocationSuccess = () => {
+    setAllocationDialogOpen(false);
+    setEditingEntry(null);
+    loadTaskAllocations(); // Reload allocations after successful creation/update
+  };
+
 
 
   if (loading) {
@@ -203,19 +223,71 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
 
   if (allocations.length === 0) {
     return (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="info">
-          No workload allocations found for this task. Allocations can be created from the Workload view.
-        </Alert>
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ScheduleIcon fontSize="small" />
+            <Typography variant="h6">Task Allocation</Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={handleAddAllocation}
+          >
+            Add Allocation
+          </Button>
+        </Box>
+        
+        <Box sx={{ p: 2 }}>
+          <Alert 
+            severity="info"
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={handleAddAllocation}
+                startIcon={<AddIcon />}
+              >
+                Create First Allocation
+              </Button>
+            }
+          >
+            No workload allocations found for this task. Create allocations to track time and resources.
+          </Alert>
+        </Box>
+
+        <WorkloadAllocationDialog
+          open={allocationDialogOpen}
+          selectedDate={null}
+          editingEntry={editingEntry}
+          preselectedTaskId={taskId}
+          preselectedUserId={assigneeId}
+          onClose={() => {
+            setAllocationDialogOpen(false);
+            setEditingEntry(null);
+          }}
+          onSuccess={handleAllocationSuccess}
+        />
       </Box>
     );
   }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <ScheduleIcon fontSize="small" />
-        <Typography variant="h6">Task Allocation</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ScheduleIcon fontSize="small" />
+          <Typography variant="h6">Task Allocation</Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={handleAddAllocation}
+        >
+          Add Allocation
+        </Button>
       </Box>
 
       {/* Assignee Information */}
@@ -363,14 +435,24 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
                         </Tooltip>
                       </Box>
                     ) : (
-                      <Tooltip title="Edit actual hours">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditActualHours(allocation.id)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Tooltip title="Edit allocation">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditAllocation(allocation)}
+                          >
+                            <ScheduleIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit actual hours">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditActualHours(allocation.id)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     )}
                   </TableCell>
                 </TableRow>
@@ -422,10 +504,23 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
 
       <Box sx={{ mt: 2 }}>
         <Typography variant="body2" color="text.secondary">
-          Tip: Workload allocations are created from the Workload view. You can edit actual hours here to track time spent.
+          Tip: You can create new allocations or edit existing ones using the buttons above. Edit actual hours to track time spent.
           {assignee && ` All time entries are attributed to ${assignee.name || assignee.email}.`}
         </Typography>
       </Box>
+
+      <WorkloadAllocationDialog
+        open={allocationDialogOpen}
+        selectedDate={null}
+        editingEntry={editingEntry}
+        preselectedTaskId={taskId}
+        preselectedUserId={assigneeId}
+        onClose={() => {
+          setAllocationDialogOpen(false);
+          setEditingEntry(null);
+        }}
+        onSuccess={handleAllocationSuccess}
+      />
     </Box>
   );
 };

@@ -32,6 +32,7 @@ interface WorkloadAllocationDialogProps {
   selectedDate?: Date | null;
   editingEntry?: any; // WorkloadEntry for editing
   preselectedUserId?: string; // For pre-selecting a user
+  preselectedTaskId?: string; // For pre-selecting a task
 }
 
 export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> = ({
@@ -41,6 +42,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   selectedDate,
   editingEntry,
   preselectedUserId,
+  preselectedTaskId,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { projects } = useSelector((state: RootState) => state.projects);
@@ -51,7 +53,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   const [formData, setFormData] = useState({
     projectId: '',
     userId: preselectedUserId || user?.id || '',
-    taskId: '',
+    taskId: preselectedTaskId || '',
     allocatedHours: 8,
     date: selectedDate || new Date(),
   });
@@ -61,6 +63,14 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   useEffect(() => {
     if (open) {
       dispatch(fetchProjects());
+      
+      // If we have a preselected task, we need to fetch all tasks to find its project
+      if (preselectedTaskId && !editingEntry) {
+        // Fetch tasks for all projects to find the task's project
+        projects.forEach(project => {
+          dispatch(fetchProjectTasks(project.id));
+        });
+      }
       
       // Set the date when dialog opens with selected date or editing entry
       if (editingEntry) {
@@ -78,11 +88,22 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
         setFormData(prev => ({ 
           ...prev, 
           date: selectedDate || new Date(),
-          userId: preselectedUserId || user?.id || ''
+          userId: preselectedUserId || user?.id || '',
+          taskId: preselectedTaskId || ''
         }));
       }
     }
-  }, [dispatch, open, selectedDate, editingEntry, preselectedUserId, user?.id]);
+  }, [dispatch, open, selectedDate, editingEntry, preselectedUserId, preselectedTaskId, user?.id, projects]);
+
+  // Auto-set project when task is preselected
+  useEffect(() => {
+    if (preselectedTaskId && tasks.length > 0) {
+      const task = tasks.find(t => t.id === preselectedTaskId);
+      if (task && task.projectId !== formData.projectId) {
+        setFormData(prev => ({ ...prev, projectId: task.projectId }));
+      }
+    }
+  }, [preselectedTaskId, tasks, formData.projectId]);
 
   useEffect(() => {
     if (formData.projectId) {
@@ -129,7 +150,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
       setFormData({
         projectId: '',
         userId: preselectedUserId || user?.id || '',
-        taskId: '',
+        taskId: preselectedTaskId || '',
         allocatedHours: 8,
         date: selectedDate || new Date(),
       });
