@@ -40,19 +40,52 @@ router.get('/team', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Test endpoint to check if workload table has any data
+router.get('/test', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+    const { dynamoDb, TABLES } = await import('../config/dynamodb');
+    
+    const command = new ScanCommand({
+      TableName: TABLES.WORKLOAD,
+      Limit: 5
+    });
+    
+    const result = await dynamoDb.send(command);
+    res.json({ 
+      message: 'Workload table test',
+      itemCount: result.Items?.length || 0,
+      items: result.Items || []
+    });
+  } catch (error) {
+    console.error('Error in workload test:', error);
+    next(error);
+  }
+});
+
 // Get daily workload breakdown for team
 router.get('/team/daily', async (req: AuthenticatedRequest, res, next) => {
   try {
+    console.log('Team daily workload request received:', req.query);
     const { projectId, startDate, endDate } = req.query;
     
+    if (!projectId || !startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: projectId, startDate, endDate' 
+      });
+    }
+    
+    console.log('Calling workloadService.getTeamDailyWorkload...');
     const dailyWorkload = await workloadService.getTeamDailyWorkload(
       projectId as string,
       startDate as string,
       endDate as string
     );
     
+    console.log('Sending response with daily workload');
     res.json({ dailyWorkload });
   } catch (error) {
+    console.error('Error in team daily workload route:', error);
     next(error);
   }
 });

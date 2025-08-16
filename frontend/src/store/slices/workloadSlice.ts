@@ -75,11 +75,30 @@ export const fetchTeamDailyWorkload = createAsyncThunk(
     projectId: string; 
     startDate: string; 
     endDate: string; 
-  }) => {
-    const response = await apiClient.get('/workload/team/daily', {
-      params: { projectId, startDate, endDate }
-    });
-    return response.data.dailyWorkload;
+  }, { rejectWithValue }) => {
+    try {
+      console.log('Fetching team daily workload:', { projectId, startDate, endDate });
+      
+      const response = await apiClient.get('/workload/team/daily', {
+        params: { projectId, startDate, endDate },
+        timeout: 15000 // 15 second timeout for this specific request
+      });
+      
+      console.log('Team daily workload response:', response.data);
+      return response.data.dailyWorkload;
+    } catch (error: any) {
+      console.error('Error fetching team daily workload:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return rejectWithValue('Request timeout - please try again');
+      }
+      
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to fetch team daily workload'
+      );
+    }
   }
 );
 
@@ -118,11 +137,18 @@ const workloadSlice = createSlice({
         console.error('Failed to fetch workload entries:', action.error);
         state.error = action.error.message || 'Failed to fetch workload entries';
       })
+      .addCase(fetchTeamDailyWorkload.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchTeamDailyWorkload.fulfilled, (state, action) => {
+        state.loading = false;
         state.dailyWorkload = action.payload;
+        state.error = null;
       })
       .addCase(fetchTeamDailyWorkload.rejected, (state, action) => {
-        state.error = action.error.message || 'Failed to fetch daily workload';
+        state.loading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to fetch daily workload';
       });
   },
 });
