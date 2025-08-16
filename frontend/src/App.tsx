@@ -10,6 +10,7 @@ import { useAutoUserCreation } from './hooks/useAutoUserCreation';
 import { AuthWrapper } from './components/auth/AuthWrapper';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
+import { ProjectList } from './pages/ProjectList';
 import { ProjectView } from './pages/ProjectView';
 import { TaskManagement } from './pages/TaskManagement';
 import { TaskCreatePage } from './pages/TaskCreatePage';
@@ -50,6 +51,7 @@ function App() {
         <Route path="/callback" element={<AuthCallback />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/projects" element={<ProjectList />} />
         <Route path="/projects/:projectId" element={<ProjectView />} />
         <Route path="/tasks" element={<TaskManagement />} />
         <Route path="/tasks/create" element={<TaskCreatePage />} />

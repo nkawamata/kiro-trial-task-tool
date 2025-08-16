@@ -125,6 +125,15 @@ export const Dashboard: React.FC = () => {
                       View All Projects ({projects.length})
                     </Button>
                   )}
+                  {projects.length > 0 && projects.length <= 5 && (
+                    <Button
+                      variant="text"
+                      onClick={() => navigate('/projects')}
+                      sx={{ mt: 1 }}
+                    >
+                      Manage Projects
+                    </Button>
+                  )}
                 </Box>
               )}
             </CardContent>

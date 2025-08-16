@@ -22,6 +22,7 @@ import {
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
+  FolderOpen as ProjectsIcon,
   Assignment as TaskIcon,
   Timeline as GanttIcon,
   WorkOutline as WorkloadIcon,
@@ -64,6 +65,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Projects', icon: <ProjectsIcon />, path: '/projects' },
     { text: 'Tasks', icon: <TaskIcon />, path: '/tasks' },
     { text: 'Gantt Chart', icon: <GanttIcon />, path: '/gantt' },
     { text: 'Workload', icon: <WorkloadIcon />, path: '/workload' },
@@ -81,7 +83,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              selected={location.pathname === item.path}
+              selected={
+                item.path === '/projects' 
+                  ? location.pathname.startsWith('/projects')
+                  : location.pathname === item.path
+              }
               onClick={() => navigate(item.path)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
