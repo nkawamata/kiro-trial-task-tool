@@ -8,6 +8,7 @@ import {
   Chip,
   IconButton,
   Button,
+  Grid,
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
@@ -60,10 +61,13 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
 
   useEffect(() => {
     if (targetUserId) {
-      const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      // Fetch data for 3 months: previous, current, and next
+      const prevMonth = subMonths(currentMonth, 1);
+      const nextMonth = addMonths(currentMonth, 1);
+      const startDate = format(startOfMonth(prevMonth), 'yyyy-MM-dd');
+      const endDate = format(endOfMonth(nextMonth), 'yyyy-MM-dd');
       
-      console.log('Fetching workload data for:', { targetUserId, startDate, endDate });
+      console.log('Fetching workload data for 3 months:', { targetUserId, startDate, endDate });
       
       dispatch(fetchWorkloadSummary({ startDate, endDate }));
       dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
@@ -133,8 +137,8 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
     return 'error';
   };
 
-  const renderCalendarDays = () => {
-    const monthStart = startOfMonth(currentMonth);
+  const renderCalendarDays = (monthToRender: Date) => {
+    const monthStart = startOfMonth(monthToRender);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
@@ -152,7 +156,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
         <Box
           key={currentDay.toString()}
           sx={{
-            minHeight: 120,
+            minHeight: 100,
             border: '1px solid',
             borderColor: 'divider',
             cursor: 'pointer',
@@ -164,7 +168,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
             },
             display: 'flex',
             flexDirection: 'column',
-            p: 1,
+            p: 0.5,
           }}
           onClick={() => {
             setSelectedDate(currentDay);
@@ -172,13 +176,13 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           }}
         >
           {/* Day number */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
             <Typography 
               variant="body2" 
               fontWeight={isCurrentDay ? 'bold' : 'normal'}
               color={isCurrentMonth ? 'text.primary' : 'text.disabled'}
               sx={{
-                fontSize: '0.875rem',
+                fontSize: '0.75rem',
                 lineHeight: 1.2,
               }}
             >
@@ -187,8 +191,8 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
             {isCurrentDay && (
               <Box
                 sx={{
-                  width: 6,
-                  height: 6,
+                  width: 4,
+                  height: 4,
                   borderRadius: '50%',
                   backgroundColor: 'primary.main',
                 }}
@@ -204,20 +208,20 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
                 size="small"
                 color={getWorkloadColor(workloadHours)}
                 sx={{ 
-                  fontSize: '0.7rem', 
-                  height: 18,
+                  fontSize: '0.6rem', 
+                  height: 16,
                   '& .MuiChip-label': {
-                    px: 0.5,
+                    px: 0.25,
                   }
                 }}
               />
               <Box 
                 sx={{ 
-                  height: 3, 
+                  height: 2, 
                   backgroundColor: 'action.hover', 
-                  borderRadius: 1.5, 
+                  borderRadius: 1, 
                   overflow: 'hidden',
-                  mt: 0.5,
+                  mt: 0.25,
                 }}
               >
                 <Box
@@ -225,7 +229,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
                     height: '100%',
                     width: `${Math.min((workloadHours / 8) * 100, 100)}%`,
                     backgroundColor: workloadHours > 8 ? 'error.main' : 'primary.main',
-                    borderRadius: 1.5,
+                    borderRadius: 1,
                   }}
                 />
               </Box>
@@ -246,7 +250,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
       <Box
         key={day}
         sx={{
-          py: 1.5,
+          py: 1,
           backgroundColor: 'grey.50',
           border: '1px solid',
           borderColor: 'divider',
@@ -260,7 +264,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           sx={{ 
             fontWeight: 'bold',
             color: 'text.secondary',
-            fontSize: '0.75rem',
+            fontSize: '0.65rem',
             textTransform: 'uppercase',
             letterSpacing: 0.5,
           }}
@@ -269,6 +273,39 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
         </Typography>
       </Box>
     ));
+  };
+
+  const renderSingleMonth = (monthToRender: Date, isCenter: boolean = false) => {
+    return (
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography 
+          variant="h6" 
+          align="center" 
+          sx={{ 
+            mb: 1, 
+            fontWeight: isCenter ? 'bold' : 'normal',
+            color: isCenter ? 'primary.main' : 'text.secondary',
+            fontSize: isCenter ? '1.1rem' : '1rem'
+          }}
+        >
+          {format(monthToRender, 'MMMM yyyy')}
+        </Typography>
+        <Box 
+          sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: 0,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            overflow: 'hidden',
+          }}
+        >
+          {renderWeekDays()}
+          {renderCalendarDays(monthToRender)}
+        </Box>
+      </Box>
+    );
   };
 
   if (!targetUserId) {
@@ -290,8 +327,8 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
               <IconButton onClick={prevMonth}>
                 <ChevronLeftIcon />
               </IconButton>
-              <Typography variant="h6">
-                {format(currentMonth, 'MMMM yyyy')}
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                3-Month Workload View
               </Typography>
               <IconButton onClick={nextMonth}>
                 <ChevronRightIcon />
@@ -303,9 +340,11 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
                 variant="outlined"
                 size="small"
                 onClick={() => {
-                  const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-                  const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-                  console.log('Manual refresh for:', { targetUserId, startDate, endDate });
+                  const prevMonth = subMonths(currentMonth, 1);
+                  const nextMonth = addMonths(currentMonth, 1);
+                  const startDate = format(startOfMonth(prevMonth), 'yyyy-MM-dd');
+                  const endDate = format(endOfMonth(nextMonth), 'yyyy-MM-dd');
+                  console.log('Manual refresh for 3 months:', { targetUserId, startDate, endDate });
                   if (targetUserId) {
                     dispatch(fetchWorkloadSummary({ startDate, endDate }));
                     dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
@@ -344,19 +383,11 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
             </Box>
           )}
 
-          <Box 
-            sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: 0,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1,
-              overflow: 'hidden',
-            }}
-          >
-            {renderWeekDays()}
-            {renderCalendarDays()}
+          {/* Three-month horizontal layout */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            {renderSingleMonth(subMonths(currentMonth, 1), false)}
+            {renderSingleMonth(currentMonth, true)}
+            {renderSingleMonth(addMonths(currentMonth, 1), false)}
           </Box>
 
           <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -387,11 +418,13 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           setSelectedDate(null);
         }}
         onSuccess={() => {
-          // Refresh workload data
-          const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-          const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+          // Refresh workload data for all 3 months
+          const prevMonth = subMonths(currentMonth, 1);
+          const nextMonth = addMonths(currentMonth, 1);
+          const startDate = format(startOfMonth(prevMonth), 'yyyy-MM-dd');
+          const endDate = format(endOfMonth(nextMonth), 'yyyy-MM-dd');
           if (targetUserId) {
-            console.log('Refreshing workload data after allocation');
+            console.log('Refreshing workload data after allocation for 3 months');
             dispatch(fetchWorkloadSummary({ startDate, endDate }));
             dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
           }
