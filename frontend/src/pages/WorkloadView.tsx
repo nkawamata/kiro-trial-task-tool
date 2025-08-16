@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -19,12 +20,51 @@ import {
 
 export const WorkloadView: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const { tab } = useParams<{ tab?: string }>();
   const { summary, distribution, loading } = useSelector((state: RootState) => state.workload);
 
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks'>('thisWeek');
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Map tab names to indices
+  const tabNameToIndex: Record<string, number> = {
+    'overview': 0,
+    'calendar': 1,
+    'team': 2,
+    'analytics': 3,
+    'insights': 4,
+  };
+
+  const indexToTabName: Record<number, string> = {
+    0: 'overview',
+    1: 'calendar',
+    2: 'team',
+    3: 'analytics',
+    4: 'insights',
+  };
+
+  // Get current tab index from URL
+  const getCurrentTabIndex = (): number => {
+    if (!tab) return 0; // Default to overview
+    const tabIndex = tabNameToIndex[tab.toLowerCase()];
+    if (tabIndex === undefined) {
+      // Invalid tab name, redirect to overview
+      navigate('/workload/overview', { replace: true });
+      return 0;
+    }
+    return tabIndex;
+  };
+
+  // Handle tab change and update URL
+  const handleTabChange = (newTabIndex: number) => {
+    const tabName = indexToTabName[newTabIndex];
+    if (tabName) {
+      navigate(`/workload/${tabName}`, { replace: true });
+    }
+  };
 
   const getDateRange = useCallback(() => {
     const now = new Date();
@@ -63,12 +103,18 @@ export const WorkloadView: React.FC = () => {
   }, [dateRange]);
 
   useEffect(() => {
+    // Redirect to overview tab if no tab is specified
+    if (!tab) {
+      navigate('/workload/overview', { replace: true });
+      return;
+    }
+
     dispatch(fetchProjects());
     dispatch(fetchWorkloadDistribution());
     
     const { startDate, endDate } = getDateRange();
     dispatch(fetchWorkloadSummary({ startDate, endDate }));
-  }, [dispatch, dateRange, getDateRange]);
+  }, [dispatch, dateRange, getDateRange, tab, navigate]);
 
   useEffect(() => {
     if (selectedProject !== 'all') {
@@ -109,6 +155,8 @@ export const WorkloadView: React.FC = () => {
         onProjectChange={setSelectedProject}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
+        currentTab={getCurrentTabIndex()}
+        onTabChange={handleTabChange}
       />
 
       <WorkloadAllocationDialog

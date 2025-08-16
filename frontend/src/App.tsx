@@ -56,6 +56,7 @@ function App() {
         <Route path="/tasks/:taskId/edit" element={<TaskEditPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/workload" element={<WorkloadView />} />
+        <Route path="/workload/:tab" element={<WorkloadView />} />
         <Route path="/gantt" element={<GanttView />} />
         <Route path="/gantt/:projectId" element={<GanttView />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

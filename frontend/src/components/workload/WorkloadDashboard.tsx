@@ -58,6 +58,8 @@ interface WorkloadDashboardProps {
   onProjectChange: (projectId: string) => void;
   dateRange: 'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks';
   onDateRangeChange: (range: 'thisWeek' | 'nextWeek' | 'afterTwoWeeks' | 'afterThreeWeeks') => void;
+  currentTab: number;
+  onTabChange: (tabIndex: number) => void;
 }
 
 export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
@@ -67,14 +69,14 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
   onProjectChange,
   dateRange,
   onDateRangeChange,
+  currentTab,
+  onTabChange,
 }) => {
   const { summary, distribution, teamWorkload, loading, error } = useSelector((state: RootState) => state.workload);
   const { projects } = useSelector((state: RootState) => state.projects);
 
-  const [tabValue, setTabValue] = useState(0);
-
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+    onTabChange(newValue);
   };
 
   if (loading && !summary && !distribution) {
@@ -130,7 +132,7 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
       {/* Main Content Tabs */}
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
+          <Tabs value={currentTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
             <Tab icon={<DashboardIcon />} label="Overview" />
             <Tab icon={<CalendarIcon />} label="Calendar" />
             <Tab icon={<TeamIcon />} label="Team" />
@@ -140,7 +142,7 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
         </Box>
 
         <CardContent>
-          <TabPanel value={tabValue} index={0}>
+          <TabPanel value={currentTab} index={0}>
             <WorkloadSummary 
               summary={summary} 
               distribution={distribution} 
@@ -148,11 +150,11 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
             />
           </TabPanel>
 
-          <TabPanel value={tabValue} index={1}>
+          <TabPanel value={currentTab} index={1}>
             <WorkloadCalendar />
           </TabPanel>
 
-          <TabPanel value={tabValue} index={2}>
+          <TabPanel value={currentTab} index={2}>
             <Box sx={{ mb: 3 }}>
               <FormControl size="small" sx={{ minWidth: 200 }}>
                 <InputLabel>Select Project</InputLabel>
@@ -177,11 +179,11 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
             />
           </TabPanel>
 
-          <TabPanel value={tabValue} index={3}>
+          <TabPanel value={currentTab} index={3}>
             <WorkloadChart summary={summary} distribution={distribution} />
           </TabPanel>
 
-          <TabPanel value={tabValue} index={4}>
+          <TabPanel value={currentTab} index={4}>
             <WorkloadInsights 
               summary={summary} 
               distribution={distribution} 
