@@ -105,17 +105,23 @@ router.get('/task/:taskId', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
-// Update actual hours for a workload entry
+// Update workload entry
 router.patch('/:workloadId', async (req: AuthenticatedRequest, res, next) => {
   try {
     const { workloadId } = req.params;
-    const { actualHours } = req.body;
+    const updateData = req.body;
     
-    const workload = await workloadService.updateWorkloadActualHours(
-      workloadId,
-      actualHours
-    );
+    // If only actualHours is provided, use the existing method
+    if (Object.keys(updateData).length === 1 && updateData.actualHours !== undefined) {
+      const workload = await workloadService.updateWorkloadActualHours(
+        workloadId,
+        updateData.actualHours
+      );
+      return res.json({ workload });
+    }
     
+    // Otherwise, use the new update method
+    const workload = await workloadService.updateWorkloadEntry(workloadId, updateData);
     res.json({ workload });
   } catch (error) {
     next(error);

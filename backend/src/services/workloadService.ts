@@ -310,6 +310,57 @@ export class WorkloadService {
     } as WorkloadEntry;
   }
 
+  async updateWorkloadEntry(
+    workloadId: string,
+    updateData: Partial<WorkloadEntry>
+  ): Promise<WorkloadEntry> {
+    const getCommand = new GetCommand({
+      TableName: TABLES.WORKLOAD,
+      Key: { id: workloadId }
+    });
+
+    const result = await dynamoDb.send(getCommand);
+    if (!result.Item) {
+      throw new Error('Workload entry not found');
+    }
+
+    const originalEntry = result.Item as any;
+
+    // Process the date if provided
+    let processedDate = originalEntry.date;
+    if (updateData.date) {
+      const date = typeof updateData.date === 'string' ? parseISO(updateData.date) : updateData.date;
+      processedDate = format(date, 'yyyy-MM-dd');
+    }
+
+    const updatedEntry = {
+      ...originalEntry,
+      ...updateData,
+      date: processedDate,
+      updatedAt: new Date().toISOString()
+    };
+
+    const putCommand = new PutCommand({
+      TableName: TABLES.WORKLOAD,
+      Item: updatedEntry
+    });
+
+    await dynamoDb.send(putCommand);
+
+    console.log('Workload entry updated successfully:', updatedEntry);
+
+    // Return the updated entry
+    return {
+      id: updatedEntry.id,
+      userId: updatedEntry.userId,
+      projectId: updatedEntry.projectId,
+      taskId: updatedEntry.taskId,
+      date: updatedEntry.date,
+      allocatedHours: updatedEntry.allocatedHours,
+      actualHours: updatedEntry.actualHours
+    } as WorkloadEntry;
+  }
+
   async deleteWorkloadEntry(workloadId: string): Promise<void> {
     const command = new DeleteCommand({
       TableName: TABLES.WORKLOAD,

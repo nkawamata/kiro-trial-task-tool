@@ -29,6 +29,7 @@ interface WorkloadAllocationDialogProps {
   onClose: () => void;
   onSuccess?: () => void;
   selectedDate?: Date | null;
+  editingEntry?: any; // WorkloadEntry for editing
 }
 
 export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> = ({
@@ -36,6 +37,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   onClose,
   onSuccess,
   selectedDate,
+  editingEntry,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { projects } = useSelector((state: RootState) => state.projects);
@@ -54,12 +56,22 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   useEffect(() => {
     if (open) {
       dispatch(fetchProjects());
-      // Set the date when dialog opens with selected date
-      if (selectedDate) {
+      // Set the date when dialog opens with selected date or editing entry
+      if (editingEntry) {
+        const entryDate = typeof editingEntry.date === 'string' 
+          ? new Date(editingEntry.date) 
+          : editingEntry.date;
+        setFormData({
+          projectId: editingEntry.projectId,
+          taskId: editingEntry.taskId,
+          allocatedHours: editingEntry.allocatedHours,
+          date: entryDate,
+        });
+      } else if (selectedDate) {
         setFormData(prev => ({ ...prev, date: selectedDate }));
       }
     }
-  }, [dispatch, open, selectedDate]);
+  }, [dispatch, open, selectedDate, editingEntry]);
 
   useEffect(() => {
     if (formData.projectId) {
@@ -75,17 +87,30 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
     setError(null);
 
     try {
-      const allocationData = {
-        userId: user.id,
-        projectId: formData.projectId,
-        taskId: formData.taskId,
-        allocatedHours: formData.allocatedHours,
-        date: formData.date.toISOString(),
-      };
-      
-      console.log('Allocating workload:', allocationData);
-      
-      await apiClient.post('/workload/allocate', allocationData);
+      if (editingEntry) {
+        // Update existing entry
+        const updateData = {
+          allocatedHours: formData.allocatedHours,
+          date: formData.date.toISOString(),
+        };
+        
+        console.log('Updating workload entry:', editingEntry.id, updateData);
+        
+        await apiClient.patch(`/workload/${editingEntry.id}`, updateData);
+      } else {
+        // Create new entry
+        const allocationData = {
+          userId: user.id,
+          projectId: formData.projectId,
+          taskId: formData.taskId,
+          allocatedHours: formData.allocatedHours,
+          date: formData.date.toISOString(),
+        };
+        
+        console.log('Allocating workload:', allocationData);
+        
+        await apiClient.post('/workload/allocate', allocationData);
+      }
 
       onSuccess?.();
       onClose();
@@ -96,7 +121,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
         date: selectedDate || new Date(),
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to allocate workload');
+      setError(err.response?.data?.message || `Failed to ${editingEntry ? 'update' : 'allocate'} workload`);
     } finally {
       setLoading(false);
     }
@@ -119,7 +144,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit}>
-          <DialogTitle>Allocate Workload</DialogTitle>
+          <DialogTitle>{editingEntry ? 'Edit Workload' : 'Allocate Workload'}</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 1 }}>
               {error && (
@@ -130,7 +155,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
 
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <FormControl fullWidth required>
+                  <FormControl fullWidth required disabled={!!editingEntry}>
                     <InputLabel>Project</InputLabel>
                     <Select
                       value={formData.projectId}
@@ -147,7 +172,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
                 </Grid>
 
                 <Grid item xs={12}>
-                  <FormControl fullWidth required disabled={!formData.projectId}>
+                  <FormControl fullWidth required disabled={!formData.projectId || !!editingEntry}>
                     <InputLabel>Task</InputLabel>
                     <Select
                       value={formData.taskId}
@@ -191,7 +216,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
               </Grid>
 
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                This will allocate {formData.allocatedHours} hours of work for the selected task on the specified date.
+                This will {editingEntry ? 'update the allocation to' : 'allocate'} {formData.allocatedHours} hours of work for the selected task on the specified date.
               </Typography>
             </Box>
           </DialogContent>
@@ -202,7 +227,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
               variant="contained"
               disabled={loading || !formData.projectId || !formData.taskId}
             >
-              {loading ? 'Allocating...' : 'Allocate'}
+              {loading ? (editingEntry ? 'Updating...' : 'Allocating...') : (editingEntry ? 'Update' : 'Allocate')}
             </Button>
           </DialogActions>
         </form>

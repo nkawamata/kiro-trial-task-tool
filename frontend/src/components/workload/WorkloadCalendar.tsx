@@ -8,7 +8,6 @@ import {
   Chip,
   IconButton,
   Button,
-  Grid,
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
@@ -30,6 +29,7 @@ import {
 import { RootState, AppDispatch } from '../../store';
 import { fetchWorkloadSummary, fetchWorkloadEntries } from '../../store/slices/workloadSlice';
 import { WorkloadAllocationDialog } from './WorkloadAllocationDialog';
+import { WorkloadDayAllocationDialog } from './WorkloadDayAllocationDialog';
 
 interface WorkloadCalendarProps {
   userId?: string;
@@ -42,6 +42,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
+  const [dayAllocationDialogOpen, setDayAllocationDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Temporary fix: use known user ID if auth user is not available
@@ -172,7 +173,7 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           }}
           onClick={() => {
             setSelectedDate(currentDay);
-            setAllocationDialogOpen(true);
+            setDayAllocationDialogOpen(true);
           }}
         >
           {/* Day number */}
@@ -409,6 +410,27 @@ export const WorkloadCalendar: React.FC<WorkloadCalendarProps> = ({ userId }) =>
           </Box>
         </CardContent>
       </Card>
+
+      <WorkloadDayAllocationDialog
+        open={dayAllocationDialogOpen}
+        selectedDate={selectedDate}
+        onClose={() => {
+          setDayAllocationDialogOpen(false);
+          setSelectedDate(null);
+        }}
+        onSuccess={() => {
+          // Refresh workload data for all 3 months
+          const prevMonth = subMonths(currentMonth, 1);
+          const nextMonth = addMonths(currentMonth, 1);
+          const startDate = format(startOfMonth(prevMonth), 'yyyy-MM-dd');
+          const endDate = format(endOfMonth(nextMonth), 'yyyy-MM-dd');
+          if (targetUserId) {
+            console.log('Refreshing workload data after allocation for 3 months');
+            dispatch(fetchWorkloadSummary({ startDate, endDate }));
+            dispatch(fetchWorkloadEntries({ startDate, endDate, userId: targetUserId }));
+          }
+        }}
+      />
 
       <WorkloadAllocationDialog
         open={allocationDialogOpen}
