@@ -7,6 +7,13 @@ export const useApiAuth = () => {
   const auth = useAuth();
 
   useEffect(() => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development' && !auth.isAuthenticated) {
+      console.log('Using development auth token');
+      setAuthToken('dev-token');
+      return;
+    }
+
     if (auth.isAuthenticated && auth.user) {
       // Get access token from the auth context
       const token = auth.user.access_token;
@@ -29,10 +36,18 @@ export const useApiAuth = () => {
     if (currentAuthHeader !== expectedAuthHeader) {
       setAuthToken(auth.user.access_token);
     }
+  } else if (process.env.NODE_ENV === 'development' && !auth.isAuthenticated) {
+    // Set development token if not authenticated in development
+    const currentAuthHeader = apiClient.defaults.headers.common['Authorization'];
+    const expectedAuthHeader = 'Bearer dev-token';
+    
+    if (currentAuthHeader !== expectedAuthHeader) {
+      setAuthToken('dev-token');
+    }
   }
 
   return {
-    isAuthenticated: auth.isAuthenticated,
-    token: auth.user?.access_token,
+    isAuthenticated: auth.isAuthenticated || (process.env.NODE_ENV === 'development'),
+    token: auth.user?.access_token || (process.env.NODE_ENV === 'development' ? 'dev-token' : undefined),
   };
 };

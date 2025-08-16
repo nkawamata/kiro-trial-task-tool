@@ -428,13 +428,13 @@ export class WorkloadService {
       console.log('Executing query with ProjectIdDateIndex...');
       const result = await dynamoDb.send(command);
       console.log('Query result:', { itemCount: result.Items?.length || 0 });
-      
+
       const workloadEntries = (result.Items || []) as WorkloadEntry[];
       return this.processWorkloadEntries(workloadEntries);
-      
+
     } catch (error) {
       console.error('Error querying with ProjectIdDateIndex, falling back to scan:', error);
-      
+
       // Fallback to scan if index query fails
       const scanCommand = new ScanCommand({
         TableName: TABLES.WORKLOAD,
@@ -452,7 +452,7 @@ export class WorkloadService {
       console.log('Executing fallback scan...');
       const scanResult = await dynamoDb.send(scanCommand);
       console.log('Scan result:', { itemCount: scanResult.Items?.length || 0 });
-      
+
       const workloadEntries = (scanResult.Items || []) as WorkloadEntry[];
       return this.processWorkloadEntries(workloadEntries);
     }
@@ -460,7 +460,7 @@ export class WorkloadService {
 
   private processWorkloadEntries(workloadEntries: WorkloadEntry[]): { [userId: string]: { [date: string]: number } } {
     console.log('Processing workload entries:', workloadEntries);
-    
+
     // Group by user and date
     const dailyWorkload: { [userId: string]: { [date: string]: number } } = {};
 

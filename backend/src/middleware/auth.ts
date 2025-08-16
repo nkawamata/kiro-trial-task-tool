@@ -122,6 +122,36 @@ export const authMiddleware = async (
 
     const token = authHeader.substring(7);
 
+    // Development bypass for testing
+    if (process.env.NODE_ENV === 'development' && token === 'dev-token') {
+      console.log('Using development auth bypass');
+      req.user = {
+        sub: '662b8362-d1e6-401c-9936-396f77003a11',
+        email: 'dev@example.com',
+        name: 'Development User',
+        iss: 'dev',
+        aud: 'dev',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000)
+      } as OIDCTokenPayload;
+
+      // Create a mock database user for development
+      if (process.env.AUTO_CREATE_USERS === 'true') {
+        try {
+          const dbUser = await authService.getOrCreateUser({
+            cognitoId: '662b8362-d1e6-401c-9936-396f77003a11',
+            email: 'dev@example.com',
+            name: 'Development User'
+          });
+          req.dbUser = dbUser;
+        } catch (error) {
+          console.error('Error creating dev user:', error);
+        }
+      }
+
+      return next();
+    }
+
     // Verify JWT token using OIDC JWKS
     const { payload } = await jwtVerify(token, JWKS, {
       issuer: process.env.OIDC_ISSUER_URL,
