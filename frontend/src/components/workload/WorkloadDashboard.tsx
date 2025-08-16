@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Tabs,
   Tab,
   FormControl,
@@ -154,39 +153,28 @@ export const WorkloadDashboard: React.FC<WorkloadDashboardProps> = ({
           </TabPanel>
 
           <TabPanel value={tabValue} index={2}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Project Filter
-                    </Typography>
-                    <FormControl fullWidth>
-                      <InputLabel>Select Project</InputLabel>
-                      <Select
-                        value={selectedProject}
-                        label="Select Project"
-                        onChange={(e) => onProjectChange(e.target.value)}
-                      >
-                        <MenuItem value="all">All Projects</MenuItem>
-                        {projects.map((project) => (
-                          <MenuItem key={project.id} value={project.id}>
-                            {project.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} md={8}>
-                <WorkloadTeamView 
-                  teamWorkload={teamWorkload} 
-                  selectedProject={selectedProject} 
-                />
-              </Grid>
-            </Grid>
+            <Box sx={{ mb: 3 }}>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Select Project</InputLabel>
+                <Select
+                  value={selectedProject}
+                  label="Select Project"
+                  onChange={(e) => onProjectChange(e.target.value)}
+                >
+                  <MenuItem value="all">All Projects</MenuItem>
+                  {projects.map((project) => (
+                    <MenuItem key={project.id} value={project.id}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            
+            <WorkloadTeamView 
+              teamWorkload={teamWorkload} 
+              selectedProject={selectedProject} 
+            />
           </TabPanel>
 
           <TabPanel value={tabValue} index={3}>

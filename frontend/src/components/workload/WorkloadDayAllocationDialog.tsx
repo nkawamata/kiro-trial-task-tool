@@ -35,6 +35,7 @@ import { WorkloadEntry } from '@task-manager/shared';
 interface WorkloadDayAllocationDialogProps {
   open: boolean;
   selectedDate: Date | null;
+  userId?: string;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -42,6 +43,7 @@ interface WorkloadDayAllocationDialogProps {
 export const WorkloadDayAllocationDialog: React.FC<WorkloadDayAllocationDialogProps> = ({
   open,
   selectedDate,
+  userId: propUserId,
   onClose,
   onSuccess,
 }) => {
@@ -56,9 +58,9 @@ export const WorkloadDayAllocationDialog: React.FC<WorkloadDayAllocationDialogPr
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Temporary fix: use known user ID if auth user is not available
+  // Use provided userId or fall back to current user
   const knownUserId = '662b8362-d1e6-401c-9936-396f77003a11';
-  const targetUserId = user?.id || knownUserId;
+  const targetUserId = propUserId || user?.id || knownUserId;
 
   // Get entries for the selected date
   const dayEntries = useMemo(() => {

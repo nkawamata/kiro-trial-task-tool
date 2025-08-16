@@ -7,6 +7,7 @@ interface WorkloadState {
   teamWorkload: WorkloadSummary[];
   distribution: any;
   entries: any[];
+  dailyWorkload: { [userId: string]: { [date: string]: number } };
   loading: boolean;
   error: string | null;
 }
@@ -16,6 +17,7 @@ const initialState: WorkloadState = {
   teamWorkload: [],
   distribution: null,
   entries: [],
+  dailyWorkload: {},
   loading: false,
   error: null,
 };
@@ -67,6 +69,20 @@ export const fetchWorkloadEntries = createAsyncThunk(
   }
 );
 
+export const fetchTeamDailyWorkload = createAsyncThunk(
+  'workload/fetchTeamDailyWorkload',
+  async ({ projectId, startDate, endDate }: { 
+    projectId: string; 
+    startDate: string; 
+    endDate: string; 
+  }) => {
+    const response = await apiClient.get('/workload/team/daily', {
+      params: { projectId, startDate, endDate }
+    });
+    return response.data.dailyWorkload;
+  }
+);
+
 const workloadSlice = createSlice({
   name: 'workload',
   initialState,
@@ -101,6 +117,12 @@ const workloadSlice = createSlice({
       .addCase(fetchWorkloadEntries.rejected, (state, action) => {
         console.error('Failed to fetch workload entries:', action.error);
         state.error = action.error.message || 'Failed to fetch workload entries';
+      })
+      .addCase(fetchTeamDailyWorkload.fulfilled, (state, action) => {
+        state.dailyWorkload = action.payload;
+      })
+      .addCase(fetchTeamDailyWorkload.rejected, (state, action) => {
+        state.error = action.error.message || 'Failed to fetch daily workload';
       });
   },
 });

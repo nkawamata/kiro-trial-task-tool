@@ -401,4 +401,46 @@ export class WorkloadService {
       actualHours: item.actualHours
     })) as WorkloadEntry[];
   }
+
+  async getTeamDailyWorkload(
+    projectId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<{ [userId: string]: { [date: string]: number } }> {
+    const command = new QueryCommand({
+      TableName: TABLES.WORKLOAD,
+      IndexName: 'ProjectIdDateIndex',
+      KeyConditionExpression: 'projectId = :projectId AND #date BETWEEN :startDate AND :endDate',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      },
+      ExpressionAttributeValues: {
+        ':projectId': projectId,
+        ':startDate': startDate,
+        ':endDate': endDate
+      }
+    });
+
+    const result = await dynamoDb.send(command);
+    const workloadEntries = (result.Items || []) as WorkloadEntry[];
+
+    // Group by user and date
+    const dailyWorkload: { [userId: string]: { [date: string]: number } } = {};
+
+    for (const entry of workloadEntries) {
+      if (!dailyWorkload[entry.userId]) {
+        dailyWorkload[entry.userId] = {};
+      }
+
+      const dateString = typeof entry.date === 'string' ? entry.date : format(entry.date, 'yyyy-MM-dd');
+
+      if (!dailyWorkload[entry.userId][dateString]) {
+        dailyWorkload[entry.userId][dateString] = 0;
+      }
+
+      dailyWorkload[entry.userId][dateString] += entry.allocatedHours;
+    }
+
+    return dailyWorkload;
+  }
 }

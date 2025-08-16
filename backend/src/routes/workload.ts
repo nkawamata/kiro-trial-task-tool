@@ -40,6 +40,23 @@ router.get('/team', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get daily workload breakdown for team
+router.get('/team/daily', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { projectId, startDate, endDate } = req.query;
+    
+    const dailyWorkload = await workloadService.getTeamDailyWorkload(
+      projectId as string,
+      startDate as string,
+      endDate as string
+    );
+    
+    res.json({ dailyWorkload });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update workload allocation
 router.post('/allocate', async (req: AuthenticatedRequest, res, next) => {
   try {
