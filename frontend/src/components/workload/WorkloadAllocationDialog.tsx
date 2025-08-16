@@ -22,6 +22,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { RootState, AppDispatch } from '../../store';
 import { fetchProjects } from '../../store/slices/projectsSlice';
 import { fetchProjectTasks } from '../../store/slices/tasksSlice';
+import { fetchProjectMembers } from '../../store/slices/teamSlice';
 import { apiClient } from '../../services/apiClient';
 
 interface WorkloadAllocationDialogProps {
@@ -30,6 +31,7 @@ interface WorkloadAllocationDialogProps {
   onSuccess?: () => void;
   selectedDate?: Date | null;
   editingEntry?: any; // WorkloadEntry for editing
+  preselectedUserId?: string; // For pre-selecting a user
 }
 
 export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> = ({
@@ -38,14 +40,17 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   onSuccess,
   selectedDate,
   editingEntry,
+  preselectedUserId,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { projects } = useSelector((state: RootState) => state.projects);
   const { tasks } = useSelector((state: RootState) => state.tasks);
+  const { members } = useSelector((state: RootState) => state.team);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [formData, setFormData] = useState({
     projectId: '',
+    userId: preselectedUserId || user?.id || '',
     taskId: '',
     allocatedHours: 8,
     date: selectedDate || new Date(),
@@ -56,6 +61,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   useEffect(() => {
     if (open) {
       dispatch(fetchProjects());
+      
       // Set the date when dialog opens with selected date or editing entry
       if (editingEntry) {
         const entryDate = typeof editingEntry.date === 'string' 
@@ -63,25 +69,31 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
           : editingEntry.date;
         setFormData({
           projectId: editingEntry.projectId,
+          userId: editingEntry.userId,
           taskId: editingEntry.taskId,
           allocatedHours: editingEntry.allocatedHours,
           date: entryDate,
         });
-      } else if (selectedDate) {
-        setFormData(prev => ({ ...prev, date: selectedDate }));
+      } else {
+        setFormData(prev => ({ 
+          ...prev, 
+          date: selectedDate || new Date(),
+          userId: preselectedUserId || user?.id || ''
+        }));
       }
     }
-  }, [dispatch, open, selectedDate, editingEntry]);
+  }, [dispatch, open, selectedDate, editingEntry, preselectedUserId, user?.id]);
 
   useEffect(() => {
     if (formData.projectId) {
       dispatch(fetchProjectTasks(formData.projectId));
+      dispatch(fetchProjectMembers(formData.projectId));
     }
   }, [dispatch, formData.projectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!formData.userId) return;
 
     setLoading(true);
     setError(null);
@@ -100,7 +112,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
       } else {
         // Create new entry
         const allocationData = {
-          userId: user.id,
+          userId: formData.userId,
           projectId: formData.projectId,
           taskId: formData.taskId,
           allocatedHours: formData.allocatedHours,
@@ -116,6 +128,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
       onClose();
       setFormData({
         projectId: '',
+        userId: preselectedUserId || user?.id || '',
         taskId: '',
         allocatedHours: 8,
         date: selectedDate || new Date(),
@@ -130,6 +143,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   const handleClose = () => {
     setFormData({
       projectId: '',
+      userId: preselectedUserId || user?.id || '',
       taskId: '',
       allocatedHours: 8,
       date: selectedDate || new Date(),
@@ -139,6 +153,10 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
   };
 
   const filteredTasks = tasks.filter(task => task.projectId === formData.projectId);
+  
+  // Get project members for the selected project
+  const projectMembers = formData.projectId ? members[formData.projectId] || [] : [];
+  const availableUsers = projectMembers.map(member => member.user);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -160,7 +178,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
                     <Select
                       value={formData.projectId}
                       label="Project"
-                      onChange={(e) => setFormData({ ...formData, projectId: e.target.value, taskId: '' })}
+                      onChange={(e) => setFormData({ ...formData, projectId: e.target.value, taskId: '', userId: '' })}
                     >
                       {projects.map((project) => (
                         <MenuItem key={project.id} value={project.id}>
@@ -169,6 +187,35 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
                       ))}
                     </Select>
                   </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth required disabled={!formData.projectId || !!editingEntry}>
+                    <InputLabel>Team Member</InputLabel>
+                    <Select
+                      value={formData.userId}
+                      label="Team Member"
+                      onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                    >
+                      {availableUsers.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {user.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {user.email}
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {!formData.projectId && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Select a project first to see available team members
+                    </Typography>
+                  )}
                 </Grid>
 
                 <Grid item xs={12}>
@@ -225,7 +272,7 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
             <Button
               type="submit"
               variant="contained"
-              disabled={loading || !formData.projectId || !formData.taskId}
+              disabled={loading || !formData.userId || !formData.projectId || !formData.taskId}
             >
               {loading ? (editingEntry ? 'Updating...' : 'Allocating...') : (editingEntry ? 'Update' : 'Allocate')}
             </Button>

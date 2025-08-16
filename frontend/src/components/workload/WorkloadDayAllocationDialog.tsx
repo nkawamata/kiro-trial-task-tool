@@ -299,6 +299,7 @@ export const WorkloadDayAllocationDialog: React.FC<WorkloadDayAllocationDialogPr
         open={allocationDialogOpen}
         selectedDate={selectedDate}
         editingEntry={editingEntry}
+        preselectedUserId={targetUserId}
         onClose={() => {
           setAllocationDialogOpen(false);
           setEditingEntry(null);
