@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Card,
@@ -38,24 +38,41 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Get current month dates
-  const currentDate = new Date();
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // Track the last request to prevent duplicates
+  const lastRequestRef = useRef<string | null>(null);
+  
+  // Memoize current month dates to prevent infinite re-renders
+  const { currentDate, monthDays, startDateString, endDateString } = useMemo(() => {
+    const current = new Date();
+    const start = startOfMonth(current);
+    const end = endOfMonth(current);
+    const days = eachDayOfInterval({ start, end });
+    
+    return {
+      currentDate: current,
+      monthDays: days,
+      startDateString: format(start, 'yyyy-MM-dd'),
+      endDateString: format(end, 'yyyy-MM-dd')
+    };
+  }, []); // Empty dependency array - only calculate once per component mount
 
   useEffect(() => {
     if (selectedProject && selectedProject !== 'all') {
-      const startDate = format(monthStart, 'yyyy-MM-dd');
-      const endDate = format(monthEnd, 'yyyy-MM-dd');
+      const requestKey = `${selectedProject}-${startDateString}-${endDateString}`;
       
-      dispatch(fetchTeamDailyWorkload({
-        projectId: selectedProject,
-        startDate,
-        endDate
-      }));
+      // Only make request if it's different from the last one
+      if (lastRequestRef.current !== requestKey) {
+        console.log('Fetching team daily workload for:', { selectedProject, startDateString, endDateString });
+        lastRequestRef.current = requestKey;
+        
+        dispatch(fetchTeamDailyWorkload({
+          projectId: selectedProject,
+          startDate: startDateString,
+          endDate: endDateString
+        }));
+      }
     }
-  }, [dispatch, selectedProject, monthStart, monthEnd]);
+  }, [dispatch, selectedProject, startDateString, endDateString]);
 
   const getWorkloadColor = (hours: number) => {
     if (hours === 0) return 'default';
@@ -80,13 +97,12 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
   const handleDialogSuccess = () => {
     // Refresh the daily workload data
     if (selectedProject && selectedProject !== 'all') {
-      const startDate = format(monthStart, 'yyyy-MM-dd');
-      const endDate = format(monthEnd, 'yyyy-MM-dd');
+      console.log('Refreshing team daily workload after dialog success');
       
       dispatch(fetchTeamDailyWorkload({
         projectId: selectedProject,
-        startDate,
-        endDate
+        startDate: startDateString,
+        endDate: endDateString
       }));
     }
   };
