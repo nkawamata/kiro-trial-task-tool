@@ -62,14 +62,9 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
 
   useEffect(() => {
     if (open) {
-      dispatch(fetchProjects());
-      
-      // If we have a preselected task, we need to fetch all tasks to find its project
-      if (preselectedTaskId && !editingEntry) {
-        // Fetch tasks for all projects to find the task's project
-        projects.forEach(project => {
-          dispatch(fetchProjectTasks(project.id));
-        });
+      // Only fetch projects if we don't have any loaded yet
+      if (projects.length === 0) {
+        dispatch(fetchProjects());
       }
       
       // Set the date when dialog opens with selected date or editing entry
@@ -93,7 +88,17 @@ export const WorkloadAllocationDialog: React.FC<WorkloadAllocationDialogProps> =
         }));
       }
     }
-  }, [dispatch, open, selectedDate, editingEntry, preselectedUserId, preselectedTaskId, user?.id, projects]);
+  }, [dispatch, open, selectedDate, editingEntry, preselectedUserId, preselectedTaskId, user?.id, projects.length]);
+
+  // Handle preselected task - fetch tasks for all projects when needed
+  useEffect(() => {
+    if (open && preselectedTaskId && !editingEntry && projects.length > 0) {
+      // Fetch tasks for all projects to find the task's project
+      projects.forEach(project => {
+        dispatch(fetchProjectTasks(project.id));
+      });
+    }
+  }, [dispatch, open, preselectedTaskId, editingEntry, projects.length]);
 
   // Auto-set project when task is preselected
   useEffect(() => {
