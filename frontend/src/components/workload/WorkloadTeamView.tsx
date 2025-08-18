@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -34,21 +34,32 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { dailyWorkload, allProjectsTeamSummary, allProjectsDailyWorkload, loading } = useSelector((state: RootState) => state.workload);
-  
+
+  // Debug logging
+  console.log('WorkloadTeamView render:', {
+    selectedProject,
+    teamWorkloadLength: teamWorkload.length,
+    dailyWorkloadKeys: Object.keys(dailyWorkload).length,
+    allProjectsTeamSummaryLength: allProjectsTeamSummary.length,
+    allProjectsDailyWorkloadKeys: Object.keys(allProjectsDailyWorkload).length,
+    loading
+  });
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+
   // Track the last request to prevent duplicates
   const lastRequestRef = useRef<string | null>(null);
-  
+
   // Memoize current month dates to prevent infinite re-renders
   const { currentDate, monthDays, startDateString, endDateString } = useMemo(() => {
     const current = new Date();
     const start = startOfMonth(current);
     const end = endOfMonth(current);
     const days = eachDayOfInterval({ start, end });
-    
+
     return {
       currentDate: current,
       monthDays: days,
@@ -57,21 +68,81 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
     };
   }, []); // Empty dependency array - only calculate once per component mount
 
+  // If no team workload data but we have daily workload data, create synthetic team workload
+  // This must be called before any early returns to maintain hook order
+  const effectiveTeamWorkload = useMemo(() => {
+    if (teamWorkload.length > 0) {
+      return teamWorkload;
+    }
+
+    // If we have daily workload data but no team workload, create synthetic team workload
+    if (Object.keys(dailyWorkload).length > 0) {
+      console.log('Creating synthetic team workload from daily workload data');
+
+      return Object.keys(dailyWorkload).map(userId => ({
+        userId,
+        userName: userNames.get(userId) || `User ${userId.substring(0, 8)}`, // Use fetched name if available, fallback otherwise
+        totalAllocatedHours: Object.values(dailyWorkload[userId] || {}).reduce((sum, hours) => sum + hours, 0),
+        totalActualHours: 0,
+        projects: []
+      }));
+    }
+
+    return [];
+  }, [teamWorkload, dailyWorkload, userNames]);
+
+  // Effect to fetch user names when we have daily workload but no team workload
+  useEffect(() => {
+    const fetchUserNames = async () => {
+      if (teamWorkload.length === 0 && Object.keys(dailyWorkload).length > 0) {
+        const { userService } = await import('../../services/userService');
+
+        const userIds = Object.keys(dailyWorkload);
+        const missingUserIds = userIds.filter(userId => !userNames.has(userId));
+
+        if (missingUserIds.length > 0) {
+          console.log('Fetching user names for:', missingUserIds);
+          const newUserNames = new Map(userNames);
+
+          // Fetch all missing user names in parallel
+          const userPromises = missingUserIds.map(async (userId) => {
+            try {
+              const user = await userService.getUser(userId);
+              return { userId, userName: user.name };
+            } catch (error) {
+              console.error(`Failed to fetch user name for ${userId}:`, error);
+              return { userId, userName: `User ${userId.substring(0, 8)}` };
+            }
+          });
+
+          const userResults = await Promise.all(userPromises);
+          userResults.forEach(({ userId, userName }) => {
+            newUserNames.set(userId, userName);
+          });
+
+          setUserNames(newUserNames);
+        }
+      }
+    };
+
+    fetchUserNames();
+  }, [teamWorkload.length, Object.keys(dailyWorkload).sort().join(','), userNames.size]); // Use sorted join and size to track changes
+
   useEffect(() => {
     if (selectedProject === 'all') {
       const requestKey = `all-projects-${startDateString}-${endDateString}`;
-      
+
       // Only make request if it's different from the last one
       if (lastRequestRef.current !== requestKey) {
         console.log('Fetching all projects team summary and daily workload for:', { startDateString, endDateString });
         lastRequestRef.current = requestKey;
-        
+
         // Fetch both summary and daily workload data for all projects
         dispatch(fetchAllProjectsTeamWorkloadSummary({
           startDate: startDateString,
           endDate: endDateString
         }));
-        
+
         dispatch(fetchAllProjectsDailyWorkload({
           startDate: startDateString,
           endDate: endDateString
@@ -79,12 +150,17 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
       }
     } else if (selectedProject) {
       const requestKey = `${selectedProject}-${startDateString}-${endDateString}`;
-      
+
       // Only make request if it's different from the last one
       if (lastRequestRef.current !== requestKey) {
-        console.log('Fetching team daily workload for:', { selectedProject, startDateString, endDateString });
+        console.log('Fetching team daily workload for specific project:', {
+          selectedProject,
+          startDateString,
+          endDateString,
+          currentDailyWorkload: Object.keys(dailyWorkload).length
+        });
         lastRequestRef.current = requestKey;
-        
+
         dispatch(fetchTeamDailyWorkload({
           projectId: selectedProject,
           startDate: startDateString,
@@ -92,7 +168,7 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
         }));
       }
     }
-  }, [dispatch, selectedProject, startDateString, endDateString]);
+  }, [dispatch, selectedProject, startDateString, endDateString, dailyWorkload]);
 
   const getWorkloadColor = (hours: number) => {
     if (hours === 0) return 'default';
@@ -118,14 +194,14 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
     // Refresh the daily workload data
     if (selectedProject === 'all') {
       console.log('Refreshing all projects daily workload after dialog success');
-      
+
       dispatch(fetchAllProjectsDailyWorkload({
         startDate: startDateString,
         endDate: endDateString
       }));
     } else if (selectedProject) {
       console.log('Refreshing team daily workload after dialog success');
-      
+
       dispatch(fetchTeamDailyWorkload({
         projectId: selectedProject,
         startDate: startDateString,
@@ -134,17 +210,26 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
     }
   };
 
+  // Early return for "All Projects" view - after all hooks have been called
   if (selectedProject === 'all') {
     return (
-      <WorkloadAllProjectsTeamSummary 
-        teamSummary={allProjectsTeamSummary} 
+      <WorkloadAllProjectsTeamSummary
+        teamSummary={allProjectsTeamSummary}
         dailyWorkload={allProjectsDailyWorkload}
         loading={loading}
       />
     );
   }
 
-  if (teamWorkload.length === 0) {
+  if (effectiveTeamWorkload.length === 0) {
+    console.log('WorkloadTeamView: No team workload data', {
+      selectedProject,
+      teamWorkloadLength: teamWorkload.length,
+      dailyWorkloadKeys: Object.keys(dailyWorkload),
+      startDateString,
+      endDateString
+    });
+
     return (
       <Card>
         <CardContent>
@@ -153,6 +238,9 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
           </Typography>
           <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
             No team workload data available for the selected project and period.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ display: 'block', mt: 2 }}>
+            Project: {selectedProject} | Date Range: {startDateString} to {endDateString}
           </Typography>
         </CardContent>
       </Card>
@@ -181,7 +269,7 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Click on any cell to view and manage daily task allocations
           </Typography>
-          
+
           <TableContainer component={Paper} sx={{ maxHeight: 600, overflow: 'auto' }}>
             <Table stickyHeader size="small">
               <TableHead>
@@ -190,10 +278,10 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
                     Team Member
                   </TableCell>
                   {monthDays.map((day) => (
-                    <TableCell 
-                      key={day.toISOString()} 
-                      align="center" 
-                      sx={{ 
+                    <TableCell
+                      key={day.toISOString()}
+                      align="center"
+                      sx={{
                         minWidth: 50,
                         fontSize: '0.75rem',
                         padding: '4px 8px',
@@ -213,13 +301,13 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {teamWorkload.map((member) => (
+                {effectiveTeamWorkload.map((member) => (
                   <TableRow key={member.userId}>
-                    <TableCell 
-                      sx={{ 
-                        position: 'sticky', 
-                        left: 0, 
-                        backgroundColor: 'background.paper', 
+                    <TableCell
+                      sx={{
+                        position: 'sticky',
+                        left: 0,
+                        backgroundColor: 'background.paper',
                         zIndex: 1,
                         borderRight: '1px solid',
                         borderColor: 'divider'
@@ -238,12 +326,12 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
                       const dateString = format(day, 'yyyy-MM-dd');
                       const hours = dailyWorkload[member.userId]?.[dateString] || 0;
                       const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                      
+
                       return (
-                        <TableCell 
+                        <TableCell
                           key={`${member.userId}-${day.toISOString()}`}
                           align="center"
-                          sx={{ 
+                          sx={{
                             padding: '4px',
                             cursor: 'pointer',
                             backgroundColor: isWeekend ? 'grey.50' : 'inherit',
@@ -258,7 +346,7 @@ export const WorkloadTeamView: React.FC<WorkloadTeamViewProps> = ({
                               label={`${hours}h`}
                               size="small"
                               color={getWorkloadColor(hours)}
-                              sx={{ 
+                              sx={{
                                 fontSize: '0.7rem',
                                 height: 20,
                                 minWidth: 35

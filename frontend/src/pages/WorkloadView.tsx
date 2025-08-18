@@ -119,6 +119,7 @@ export const WorkloadView: React.FC = () => {
   useEffect(() => {
     if (selectedProject !== 'all') {
       const { startDate, endDate } = getDateRange();
+      console.log('WorkloadView: Fetching team workload for project:', { selectedProject, startDate, endDate });
       dispatch(fetchTeamWorkload({ projectId: selectedProject, startDate, endDate }));
     }
   }, [dispatch, selectedProject, dateRange, getDateRange]);

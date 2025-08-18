@@ -100,22 +100,57 @@ export class WorkloadService {
     startDate: string,
     endDate: string
   ): Promise<WorkloadSummary[]> {
-    const command = new QueryCommand({
-      TableName: TABLES.WORKLOAD,
-      IndexName: 'ProjectIdDateIndex',
-      KeyConditionExpression: 'projectId = :projectId AND #date BETWEEN :startDate AND :endDate',
-      ExpressionAttributeNames: {
-        '#date': 'date'
-      },
-      ExpressionAttributeValues: {
-        ':projectId': projectId,
-        ':startDate': startDate,
-        ':endDate': endDate
-      }
-    });
+    console.log('Fetching team workload summary:', { projectId, startDate, endDate });
+    
+    let workloadEntries: WorkloadEntry[] = [];
+    
+    try {
+      const command = new QueryCommand({
+        TableName: TABLES.WORKLOAD,
+        IndexName: 'ProjectIdDateIndex',
+        KeyConditionExpression: 'projectId = :projectId AND #date BETWEEN :startDate AND :endDate',
+        ExpressionAttributeNames: {
+          '#date': 'date'
+        },
+        ExpressionAttributeValues: {
+          ':projectId': projectId,
+          ':startDate': startDate,
+          ':endDate': endDate
+        }
+      });
 
-    const result = await dynamoDb.send(command);
-    const workloadEntries = (result.Items || []) as WorkloadEntry[];
+      const result = await dynamoDb.send(command);
+      console.log('Team workload query result:', { 
+        itemCount: result.Items?.length || 0,
+        items: result.Items?.slice(0, 3)
+      });
+      
+      workloadEntries = (result.Items || []) as WorkloadEntry[];
+    } catch (error) {
+      console.error('Error querying team workload with ProjectIdDateIndex, falling back to scan:', error);
+      
+      // Fallback to scan if index query fails
+      const scanCommand = new ScanCommand({
+        TableName: TABLES.WORKLOAD,
+        FilterExpression: 'projectId = :projectId AND #date BETWEEN :startDate AND :endDate',
+        ExpressionAttributeNames: {
+          '#date': 'date'
+        },
+        ExpressionAttributeValues: {
+          ':projectId': projectId,
+          ':startDate': startDate,
+          ':endDate': endDate
+        }
+      });
+
+      const scanResult = await dynamoDb.send(scanCommand);
+      console.log('Team workload scan result:', { 
+        itemCount: scanResult.Items?.length || 0,
+        items: scanResult.Items?.slice(0, 3)
+      });
+      
+      workloadEntries = (scanResult.Items || []) as WorkloadEntry[];
+    }
 
     // Group by user
     const userMap = new Map<string, { allocatedHours: number; actualHours: number; userName: string }>();
@@ -152,7 +187,7 @@ export class WorkloadService {
       // Handle error silently
     }
 
-    return Array.from(userMap.entries()).map(([userId, data]) => ({
+    const result = Array.from(userMap.entries()).map(([userId, data]) => ({
       userId,
       userName: data.userName,
       totalAllocatedHours: data.allocatedHours,
@@ -166,6 +201,14 @@ export class WorkloadService {
         }
       ]
     }));
+    
+    console.log('Team workload summary result:', { 
+      projectId, 
+      userCount: result.length,
+      users: result.map(r => ({ userId: r.userId, userName: r.userName, hours: r.totalAllocatedHours }))
+    });
+    
+    return result;
   }
 
   async getAllProjectsTeamWorkloadSummary(
@@ -275,10 +318,16 @@ export class WorkloadService {
 
     console.log('Executing scan for all projects daily workload...');
     const result = await dynamoDb.send(command);
-    console.log('Scan result:', { itemCount: result.Items?.length || 0 });
+    console.log('Scan result:', { 
+      itemCount: result.Items?.length || 0,
+      items: result.Items?.slice(0, 3), // Log first 3 items for debugging
+      projectIds: [...new Set(result.Items?.map(item => item.projectId))] // Show unique project IDs
+    });
 
     const workloadEntries = (result.Items || []) as WorkloadEntry[];
-    return this.processWorkloadEntries(workloadEntries);
+    const processedData = this.processWorkloadEntries(workloadEntries);
+    console.log('Processed all projects daily workload:', processedData);
+    return processedData;
   }
 
   async allocateWorkload(allocationData: Partial<WorkloadEntry>): Promise<WorkloadEntry> {
@@ -540,10 +589,15 @@ export class WorkloadService {
 
       console.log('Executing query with ProjectIdDateIndex...');
       const result = await dynamoDb.send(command);
-      console.log('Query result:', { itemCount: result.Items?.length || 0 });
+      console.log('Query result:', { 
+        itemCount: result.Items?.length || 0,
+        items: result.Items?.slice(0, 3) // Log first 3 items for debugging
+      });
 
       const workloadEntries = (result.Items || []) as WorkloadEntry[];
-      return this.processWorkloadEntries(workloadEntries);
+      const processedData = this.processWorkloadEntries(workloadEntries);
+      console.log('Processed team daily workload:', processedData);
+      return processedData;
 
     } catch (error) {
       console.error('Error querying with ProjectIdDateIndex, falling back to scan:', error);
@@ -564,10 +618,15 @@ export class WorkloadService {
 
       console.log('Executing fallback scan...');
       const scanResult = await dynamoDb.send(scanCommand);
-      console.log('Scan result:', { itemCount: scanResult.Items?.length || 0 });
+      console.log('Scan result:', { 
+        itemCount: scanResult.Items?.length || 0,
+        items: scanResult.Items?.slice(0, 3) // Log first 3 items for debugging
+      });
 
       const workloadEntries = (scanResult.Items || []) as WorkloadEntry[];
-      return this.processWorkloadEntries(workloadEntries);
+      const processedData = this.processWorkloadEntries(workloadEntries);
+      console.log('Processed team daily workload (from scan):', processedData);
+      return processedData;
     }
   }
 

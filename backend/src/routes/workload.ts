@@ -96,17 +96,88 @@ router.get('/test', async (req: AuthenticatedRequest, res, next) => {
     
     const command = new ScanCommand({
       TableName: TABLES.WORKLOAD,
-      Limit: 5
+      Limit: 10
     });
     
     const result = await dynamoDb.send(command);
+    
+    // Group by project ID to see data distribution
+    const projectGroups: { [projectId: string]: number } = {};
+    result.Items?.forEach(item => {
+      projectGroups[item.projectId] = (projectGroups[item.projectId] || 0) + 1;
+    });
+    
     res.json({ 
       message: 'Workload table test',
       itemCount: result.Items?.length || 0,
+      projectGroups,
       items: result.Items || []
     });
   } catch (error) {
     console.error('Error in workload test:', error);
+    next(error);
+  }
+});
+
+// Debug endpoint to test specific project workload query
+router.get('/debug/:projectId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: startDate, endDate' 
+      });
+    }
+    
+    console.log('Debug workload query for project:', { projectId, startDate, endDate });
+    
+    // First, let's see what project IDs exist in the workload table
+    const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+    const { dynamoDb, TABLES } = await import('../config/dynamodb');
+    
+    const scanCommand = new ScanCommand({
+      TableName: TABLES.WORKLOAD,
+      ProjectionExpression: 'projectId, #date, userId, allocatedHours',
+      ExpressionAttributeNames: {
+        '#date': 'date'
+      }
+    });
+    
+    const scanResult = await dynamoDb.send(scanCommand);
+    const allProjectIds = [...new Set(scanResult.Items?.map(item => item.projectId))];
+    const matchingItems = scanResult.Items?.filter(item => 
+      item.projectId === projectId && 
+      item.date >= startDate && 
+      item.date <= endDate
+    );
+    
+    const dailyWorkload = await workloadService.getTeamDailyWorkload(
+      projectId,
+      startDate as string,
+      endDate as string
+    );
+    
+    const teamWorkload = await workloadService.getTeamWorkload(
+      projectId,
+      startDate as string,
+      endDate as string
+    );
+    
+    res.json({ 
+      projectId,
+      startDate,
+      endDate,
+      allProjectIds,
+      matchingItemsCount: matchingItems?.length || 0,
+      matchingItems: matchingItems?.slice(0, 5), // First 5 matching items
+      dailyWorkload,
+      teamWorkload,
+      hasData: Object.keys(dailyWorkload).length > 0
+    });
+  } catch (error) {
+    console.error('Error in workload debug:', error);
     next(error);
   }
 });
