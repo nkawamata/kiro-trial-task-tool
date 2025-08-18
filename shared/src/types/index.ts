@@ -45,12 +45,36 @@ export interface TaskComment {
   updatedAt: Date;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TeamMember {
+  id: string;
+  teamId: string;
+  userId: string;
+  role: TeamRole;
+  joinedAt: Date;
+}
+
 export interface ProjectMember {
   id: string;
   projectId: string;
   userId: string;
   role: ProjectRole;
   joinedAt: Date;
+}
+
+export interface ProjectTeam {
+  id: string;
+  projectId: string;
+  teamId: string;
+  addedAt: Date;
 }
 
 export interface WorkloadEntry {
@@ -91,6 +115,12 @@ export enum ProjectRole {
   ADMIN = 'admin',
   MEMBER = 'member',
   VIEWER = 'viewer'
+}
+
+export enum TeamRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  MEMBER = 'member'
 }
 
 export interface GanttTask {

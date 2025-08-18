@@ -6,8 +6,7 @@ import { Folder as ProjectIcon, Edit as EditIcon, Add as AddIcon } from '@mui/ic
 import { RootState, AppDispatch } from '../store';
 import { fetchProjectTasks } from '../store/slices/tasksSlice';
 import { fetchProject } from '../store/slices/projectsSlice';
-import { UpdateProjectDialog } from '../components/projects';
-import { TeamManagement } from '../components/team';
+import { UpdateProjectDialog, ProjectTeamManagement } from '../components/projects';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -217,7 +216,7 @@ export const ProjectView: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={2}>
-        <TeamManagement 
+        <ProjectTeamManagement 
           projectId={projectId!} 
           canManageTeam={true} // TODO: Implement proper permission check
         />

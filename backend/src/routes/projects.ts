@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { ProjectService } from '../services/projectService';
 import { UserService } from '../services/userService';
+import { TeamsService } from '../services/teamsService';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 const projectService = new ProjectService();
 const userService = new UserService();
+const teamsService = new TeamsService();
 
 // Get all projects for user
 router.get('/', async (req: AuthenticatedRequest, res, next) => {
@@ -21,7 +23,7 @@ router.get('/', async (req: AuthenticatedRequest, res, next) => {
       return res.status(404).json({ error: 'User not found in database' });
     }
     
-    const projects = await projectService.getUserProjects(currentUser.id);
+    const projects = await projectService.getUserProjectsIncludingTeams(currentUser.id);
     res.json({ projects });
   } catch (error) {
     next(error);
@@ -138,6 +140,74 @@ router.delete('/:id', async (req: AuthenticatedRequest, res, next) => {
     }
     
     await projectService.deleteProject(projectId, currentUser.id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Team association endpoints for projects
+
+// Get teams associated with a project
+router.get('/:projectId/teams', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const cognitoId = req.user?.sub;
+    const { projectId } = req.params;
+    
+    if (!cognitoId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const currentUser = req.dbUser || await userService.getUserByCognitoId(cognitoId);
+    if (!currentUser) {
+      return res.status(401).json({ error: 'User not found in database' });
+    }
+
+    const projectTeams = await teamsService.getProjectTeams(projectId);
+    res.json({ projectTeams });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Add team to project
+router.post('/:projectId/teams/:teamId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const cognitoId = req.user?.sub;
+    const { projectId, teamId } = req.params;
+    
+    if (!cognitoId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const currentUser = req.dbUser || await userService.getUserByCognitoId(cognitoId);
+    if (!currentUser) {
+      return res.status(401).json({ error: 'User not found in database' });
+    }
+
+    const projectTeam = await teamsService.addTeamToProject(projectId, teamId, currentUser.id);
+    res.status(201).json({ projectTeam });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Remove team from project
+router.delete('/:projectId/teams/:teamId', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const cognitoId = req.user?.sub;
+    const { projectId, teamId } = req.params;
+    
+    if (!cognitoId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const currentUser = req.dbUser || await userService.getUserByCognitoId(cognitoId);
+    if (!currentUser) {
+      return res.status(401).json({ error: 'User not found in database' });
+    }
+
+    await teamsService.removeTeamFromProject(projectId, teamId, currentUser.id);
     res.status(204).send();
   } catch (error) {
     next(error);

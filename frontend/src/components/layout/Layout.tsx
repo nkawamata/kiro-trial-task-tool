@@ -26,6 +26,7 @@ import {
   Assignment as TaskIcon,
   Timeline as GanttIcon,
   WorkOutline as WorkloadIcon,
+  People as TeamsIcon,
   AccountCircle,
   Logout,
 } from '@mui/icons-material';
@@ -67,6 +68,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Projects', icon: <ProjectsIcon />, path: '/projects' },
     { text: 'Tasks', icon: <TaskIcon />, path: '/tasks' },
+    { text: 'Teams', icon: <TeamsIcon />, path: '/teams' },
     { text: 'Gantt Chart', icon: <GanttIcon />, path: '/gantt' },
     { text: 'Workload', icon: <WorkloadIcon />, path: '/workload' },
   ];
@@ -86,6 +88,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               selected={
                 item.path === '/projects' 
                   ? location.pathname.startsWith('/projects')
+                  : item.path === '/teams'
+                  ? location.pathname.startsWith('/teams')
                   : location.pathname === item.path
               }
               onClick={() => navigate(item.path)}

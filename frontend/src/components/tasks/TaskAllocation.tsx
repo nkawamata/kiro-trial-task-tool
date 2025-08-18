@@ -171,7 +171,7 @@ export const TaskAllocation: React.FC<TaskAllocationProps> = ({ taskId, assignee
     return actual - allocated;
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString();
   };
 

@@ -22,4 +22,7 @@ export const TABLES = {
   PROJECT_MEMBERS: process.env.PROJECT_MEMBERS_TABLE || 'TaskManager-ProjectMembers',
   WORKLOAD: process.env.WORKLOAD_TABLE || 'TaskManager-Workload',
   TASK_COMMENTS: process.env.TASK_COMMENTS_TABLE || 'TaskManager-TaskComments',
+  TEAMS: process.env.TEAMS_TABLE || 'TaskManager-Teams',
+  TEAM_MEMBERS: process.env.TEAM_MEMBERS_TABLE || 'TaskManager-TeamMembers',
+  PROJECT_TEAMS: process.env.PROJECT_TEAMS_TABLE || 'TaskManager-ProjectTeams',
 } as const;

@@ -4,6 +4,7 @@ import projectsReducer from './slices/projectsSlice';
 import tasksReducer from './slices/tasksSlice';
 import workloadReducer from './slices/workloadSlice';
 import teamReducer from './slices/teamSlice';
+import teamsReducer from './slices/teamsSlice';
 import usersReducer from './slices/usersSlice';
 
 export const store = configureStore({
@@ -13,6 +14,7 @@ export const store = configureStore({
     tasks: tasksReducer,
     workload: workloadReducer,
     team: teamReducer,
+    teams: teamsReducer,
     users: usersReducer,
   },
   middleware: (getDefaultMiddleware) =>

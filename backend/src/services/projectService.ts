@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { Project, ProjectStatus, ProjectMember, ProjectRole } from '../../../shared/src/types';
 import { dynamoDb, TABLES } from '../config/dynamodb';
 import { TeamService } from './teamService';
+import { TeamsService } from './teamsService';
 
 export class ProjectService {
   private teamService = new TeamService();
+  private teamsService = new TeamsService();
 
   private convertDbProjectToProject(dbProject: any): Project {
     return {
@@ -240,7 +242,7 @@ export class ProjectService {
       return true;
     }
 
-    // Check if user is a member
+    // Check if user is a direct member
     const membershipCommand = new ScanCommand({
       TableName: TABLES.PROJECT_MEMBERS,
       FilterExpression: 'projectId = :projectId AND userId = :userId',
@@ -251,6 +253,51 @@ export class ProjectService {
     });
 
     const membershipResult = await dynamoDb.send(membershipCommand);
-    return (membershipResult.Items?.length || 0) > 0;
+    if ((membershipResult.Items?.length || 0) > 0) {
+      return true;
+    }
+
+    // Check if user has access through team membership
+    const projectTeams = await this.teamsService.getProjectTeams(projectId);
+    for (const projectTeam of projectTeams) {
+      const teamMember = await this.teamsService.getTeamMember(projectTeam.teamId, userId);
+      if (teamMember) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  async getUserProjectsIncludingTeams(userId: string): Promise<Project[]> {
+    // Get direct projects (owned + member)
+    const directProjects = await this.getUserProjects(userId);
+    
+    // Get projects through team membership
+    const userTeams = await this.teamsService.getUserTeams(userId);
+    const teamProjects: Project[] = [];
+    
+    for (const userTeam of userTeams) {
+      const teamProjectAssociations = await this.teamsService.getTeamProjects(userTeam.id);
+      for (const association of teamProjectAssociations) {
+        const projectCommand = new GetCommand({
+          TableName: TABLES.PROJECTS,
+          Key: { id: association.projectId }
+        });
+        
+        const projectResult = await dynamoDb.send(projectCommand);
+        if (projectResult.Item) {
+          teamProjects.push(this.convertDbProjectToProject(projectResult.Item));
+        }
+      }
+    }
+
+    // Combine and deduplicate
+    const allProjects = [...directProjects, ...teamProjects];
+    const uniqueProjects = allProjects.filter((project, index, self) => 
+      index === self.findIndex(p => p.id === project.id)
+    );
+
+    return uniqueProjects;
   }
 }

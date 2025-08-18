@@ -19,6 +19,7 @@ import { TaskDetailPage } from './pages/TaskDetailPage';
 import { WorkloadView } from './pages/WorkloadView';
 import { GanttView } from './pages/GanttView';
 import { AuthCallback } from './components/auth/AuthCallback';
+import { TeamsPage, TeamDetailPage } from './components/teams';
 
 function App() {
   const auth = useAuth();
@@ -57,6 +58,8 @@ function App() {
         <Route path="/tasks/create" element={<TaskCreatePage />} />
         <Route path="/tasks/:taskId/edit" element={<TaskEditPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/teams/:teamId" element={<TeamDetailPage />} />
         <Route path="/workload" element={<WorkloadView />} />
         <Route path="/workload/:tab" element={<WorkloadView />} />
         <Route path="/gantt" element={<GanttView />} />

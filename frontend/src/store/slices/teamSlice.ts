@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { ProjectMember, ProjectRole, User } from '@task-manager/shared';
+import { ProjectRole } from '@task-manager/shared';
 import { teamService, ProjectMemberWithUser } from '../../services/teamService';
 
 interface TeamState {

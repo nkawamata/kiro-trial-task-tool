@@ -1,15 +1,15 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { User } from '@task-manager/shared';
 import { userService } from '../../services/userService';
 
 interface UsersState {
-  users: User[];
+  searchResults: User[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: UsersState = {
-  users: [],
+  searchResults: [],
   loading: false,
   error: null,
 };
@@ -30,8 +30,8 @@ const usersSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    clearUsers: (state) => {
-      state.users = [];
+    clearSearchResults: (state) => {
+      state.searchResults = [];
     },
   },
   extraReducers: (builder) => {
@@ -43,7 +43,7 @@ const usersSlice = createSlice({
       })
       .addCase(searchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.users = action.payload;
+        state.searchResults = action.payload;
       })
       .addCase(searchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -52,5 +52,5 @@ const usersSlice = createSlice({
   },
 });
 
-export const { clearError, clearUsers } = usersSlice.actions;
+export const { clearError, clearSearchResults } = usersSlice.actions;
 export default usersSlice.reducer;

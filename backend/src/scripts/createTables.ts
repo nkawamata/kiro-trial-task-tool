@@ -308,6 +308,125 @@ async function createTaskCommentsTable() {
 }
 
 
+async function createTeamsTable() {
+  if (await tableExists(TABLES.TEAMS)) {
+    console.log(`Table ${TABLES.TEAMS} already exists`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: TABLES.TEAMS,
+    KeySchema: [
+      { AttributeName: 'id', KeyType: 'HASH' }
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'ownerId', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'OwnerIdIndex',
+        KeySchema: [{ AttributeName: 'ownerId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      }
+    ],
+    BillingMode: 'PAY_PER_REQUEST'
+  });
+
+  await client.send(command);
+  console.log(`Created table ${TABLES.TEAMS}`);
+}
+
+async function createTeamMembersTable() {
+  if (await tableExists(TABLES.TEAM_MEMBERS)) {
+    console.log(`Table ${TABLES.TEAM_MEMBERS} already exists`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: TABLES.TEAM_MEMBERS,
+    KeySchema: [
+      { AttributeName: 'id', KeyType: 'HASH' }
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'teamId', AttributeType: 'S' },
+      { AttributeName: 'userId', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'TeamIdIndex',
+        KeySchema: [{ AttributeName: 'teamId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      },
+      {
+        IndexName: 'UserIdIndex',
+        KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      }
+    ],
+    BillingMode: 'PAY_PER_REQUEST'
+  });
+
+  await client.send(command);
+  console.log(`Created table ${TABLES.TEAM_MEMBERS}`);
+}
+
+async function createProjectTeamsTable() {
+  if (await tableExists(TABLES.PROJECT_TEAMS)) {
+    console.log(`Table ${TABLES.PROJECT_TEAMS} already exists`);
+    return;
+  }
+
+  const command = new CreateTableCommand({
+    TableName: TABLES.PROJECT_TEAMS,
+    KeySchema: [
+      { AttributeName: 'id', KeyType: 'HASH' }
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'projectId', AttributeType: 'S' },
+      { AttributeName: 'teamId', AttributeType: 'S' }
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'ProjectIdIndex',
+        KeySchema: [{ AttributeName: 'projectId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      },
+      {
+        IndexName: 'TeamIdIndex',
+        KeySchema: [{ AttributeName: 'teamId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      }
+    ],
+    BillingMode: 'PAY_PER_REQUEST'
+  });
+
+  await client.send(command);
+  console.log(`Created table ${TABLES.PROJECT_TEAMS}`);
+}
+
 async function createAllTables() {
   try {
     console.log('Creating DynamoDB tables...');
@@ -318,6 +437,9 @@ async function createAllTables() {
     await createProjectMembersTable();
     await createWorkloadTable();
     await createTaskCommentsTable();
+    await createTeamsTable();
+    await createTeamMembersTable();
+    await createProjectTeamsTable();
 
     console.log('All tables created successfully!');
   } catch (error) {
