@@ -36,25 +36,91 @@ jobs:
     - name: Run CI Tests
       run: npm run test:ci
 
+    - name: Verify Coverage Generation
+      run: |
+        echo "🔍 Checking coverage file generation..."
+        
+        echo "Frontend coverage files:"
+        if [ -d "frontend/coverage" ]; then
+          find frontend/coverage -name "*.json" -o -name "*.info" -o -name "index.html" | head -10
+        else
+          echo "❌ Frontend coverage directory not found"
+        fi
+        
+        echo "Backend coverage files:"
+        if [ -d "backend/coverage" ]; then
+          find backend/coverage -name "*.json" -o -name "*.info" -o -name "index.html" | head -10
+        else
+          echo "❌ Backend coverage directory not found"
+        fi
+        
+        echo "CI summary files:"
+        if [ -d "coverage/ci" ]; then
+          find coverage/ci -name "*.json" | head -5
+        else
+          echo "❌ CI summary directory not found"
+        fi
+
+    - name: Organize Coverage Reports
+      run: |
+        mkdir -p coverage-reports/frontend
+        mkdir -p coverage-reports/backend
+        mkdir -p coverage-reports/ci
+        
+        # Copy frontend coverage if it exists
+        if [ -d "frontend/coverage" ]; then
+          cp -r frontend/coverage/* coverage-reports/frontend/
+          echo "✅ Frontend coverage copied"
+        else
+          echo "❌ Frontend coverage not found"
+        fi
+        
+        # Copy backend coverage if it exists
+        if [ -d "backend/coverage" ]; then
+          cp -r backend/coverage/* coverage-reports/backend/
+          echo "✅ Backend coverage copied"
+        else
+          echo "❌ Backend coverage not found"
+        fi
+        
+        # Copy CI summary if it exists
+        if [ -d "coverage/ci" ]; then
+          cp -r coverage/ci/* coverage-reports/ci/
+          echo "✅ CI summary copied"
+        else
+          echo "❌ CI summary not found"
+        fi
+        
+        # List the organized structure
+        echo "📁 Coverage reports structure:"
+        find coverage-reports -type f | head -20
+
     - name: Upload Frontend Coverage
       uses: actions/upload-artifact@v4
       with:
         name: frontend-coverage
-        path: frontend/coverage/
+        path: coverage-reports/frontend/
         retention-days: 30
 
     - name: Upload Backend Coverage
       uses: actions/upload-artifact@v4
       with:
         name: backend-coverage
-        path: backend/coverage/
+        path: coverage-reports/backend/
+        retention-days: 30
+
+    - name: Upload Combined Coverage Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: coverage-reports/
         retention-days: 30
 
     - name: Upload CI Summary
       uses: actions/upload-artifact@v4
       with:
         name: ci-summary
-        path: coverage/ci/
+        path: coverage-reports/ci/
         retention-days: 30
 
     - name: Display Coverage Summary
