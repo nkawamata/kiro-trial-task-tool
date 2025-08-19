@@ -1,0 +1,44 @@
+{
+  "testConfig": {
+    "coverage": {
+      "threshold": {
+        "global": {
+          "branches": 70,
+          "functions": 70,
+          "lines": 70,
+          "statements": 70
+        }
+      },
+      "exclude": [
+        "node_modules/**",
+        "dist/**",
+        "build/**",
+        "coverage/**",
+        "**/*.d.ts",
+        "**/*.config.js",
+        "**/setupTests.ts",
+        "**/index.tsx",
+        "**/reportWebVitals.ts"
+      ]
+    },
+    "testEnvironments": {
+      "frontend": "jsdom",
+      "backend": "node"
+    },
+    "testPatterns": {
+      "unit": "**/*.test.{ts,tsx}",
+      "integration": "**/*.integration.test.{ts,tsx}",
+      "e2e": "**/*.e2e.test.{ts,tsx}"
+    },
+    "mockPatterns": [
+      "**/__mocks__/**",
+      "**/mocks/**"
+    ]
+  },
+  "reportConfig": {
+    "formats": ["text", "lcov", "html", "json"],
+    "outputDir": "coverage",
+    "combinedReport": true,
+    "openReport": true
+  }
+}

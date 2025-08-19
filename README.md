@@ -1,5 +1,10 @@
 # Task Manager
 
+[![Test and Coverage](https://github.com/your-username/task-manager/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/your-username/task-manager/actions/workflows/test-and-coverage.yml)
+[![Frontend Coverage](https://your-username.github.io/task-manager/badges/frontend-coverage.svg)](https://your-username.github.io/task-manager/badges/frontend-coverage.svg)
+[![Backend Coverage](https://your-username.github.io/task-manager/badges/backend-coverage.svg)](https://your-username.github.io/task-manager/badges/backend-coverage.svg)
+[![Tests](https://your-username.github.io/task-manager/badges/tests.svg)](https://your-username.github.io/task-manager/badges/tests.svg)
+
 A comprehensive multi-project task management tool with advanced Gantt chart visualization and intelligent workload management capabilities.
 
 ## ✨ Features
@@ -101,6 +106,36 @@ npm run dev:frontend  # http://localhost:3000
 npm run dev:backend   # http://localhost:3001
 ```
 
+## 🧪 Testing & Coverage
+
+This project maintains high test coverage standards:
+
+- **Frontend Coverage**: 94.61% statements (Target: >90%)
+- **Backend Coverage**: 95.96% statements (Target: >95%)
+- **Total Tests**: 336 tests across 15 services
+- **CI/CD**: Automated testing on every push and PR
+
+### Running Tests
+
+```bash
+# Run full CI test suite (same as GitHub Actions)
+npm run test:ci
+
+# Run individual test suites
+cd frontend && npm test
+cd backend && npm test
+
+# Run tests with coverage
+cd frontend && npm test -- --coverage
+cd backend && npm test -- --coverage
+```
+
+### Coverage Reports
+
+After running tests, coverage reports are available at:
+- Frontend: `frontend/coverage/lcov-report/index.html`
+- Backend: `backend/coverage/lcov-report/index.html`
+
 ## 📋 Available Scripts
 
 ### Root Level Commands
@@ -110,6 +145,7 @@ npm run install:all    # Install all dependencies
 npm run dev           # Start frontend and backend
 npm run build         # Build all projects
 npm run test          # Run all tests
+npm run test:ci       # Run CI test suite with coverage
 npm run lint          # Lint all code
 
 # Deployment
@@ -236,6 +272,7 @@ cd infrastructure
 ## 📚 Documentation
 
 - [Quick Start Guide](QUICK_START.md) - Get started in 5 minutes
+- [CI/CD Setup](docs/CI_SETUP.md) - Testing and coverage workflows
 - [Infrastructure Guide](infrastructure/README.md) - AWS infrastructure overview
 - [ECR Deployment](infrastructure/ECR_DEPLOYMENT.md) - Container deployment guide
 - [OIDC Configuration](infrastructure/OIDC_CONFIGURATION.md) - Authentication setup

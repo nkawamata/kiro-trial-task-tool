@@ -1,0 +1,113 @@
+name: Generate Badges
+
+on:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["Test and Coverage"]
+    types:
+      - completed
+
+jobs:
+  badges:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run CI Tests for Badge Generation
+      run: npm run test:ci
+
+    - name: Generate Coverage Badges
+      run: |
+        # Install badge generator
+        npm install -g badge-maker
+        
+        # Create badges directory
+        mkdir -p badges
+        
+        # Generate frontend coverage badge
+        if [ -f "frontend/coverage/coverage-summary.json" ]; then
+          FRONTEND_COVERAGE=$(node -e "console.log(require('./frontend/coverage/coverage-summary.json').total.statements.pct)")
+          
+          # Determine color based on coverage
+          if (( $(echo "$FRONTEND_COVERAGE >= 90" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$FRONTEND_COVERAGE >= 80" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "$FRONTEND_COVERAGE >= 70" | bc -l) )); then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          
+          # Generate badge
+          npx badge coverage "${FRONTEND_COVERAGE}%" :$COLOR > badges/frontend-coverage.svg
+        fi
+        
+        # Generate backend coverage badge
+        if [ -f "backend/coverage/coverage-summary.json" ]; then
+          BACKEND_COVERAGE=$(node -e "console.log(require('./backend/coverage/coverage-summary.json').total.statements.pct)")
+          
+          # Determine color based on coverage
+          if (( $(echo "$BACKEND_COVERAGE >= 90" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$BACKEND_COVERAGE >= 80" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "$BACKEND_COVERAGE >= 70" | bc -l) )); then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          
+          # Generate badge
+          npx badge coverage "${BACKEND_COVERAGE}%" :$COLOR > badges/backend-coverage.svg
+        fi
+        
+        # Generate test status badge
+        if [ -f "coverage/ci/summary.json" ]; then
+          TEST_STATUS=$(node -e "console.log(require('./coverage/ci/summary.json').overall.status)")
+          
+          if [ "$TEST_STATUS" = "passed" ]; then
+            npx badge tests "passing" :brightgreen > badges/tests.svg
+          else
+            npx badge tests "failing" :red > badges/tests.svg
+          fi
+        fi
+
+    - name: Upload Badge Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-badges
+        path: badges/
+        retention-days: 90
+
+    - name: Deploy Badges to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./badges
+        destination_dir: badges
+        keep_files: true

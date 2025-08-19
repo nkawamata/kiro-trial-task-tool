@@ -1,3 +1,94 @@
+export const formatDate = (date: Date | string, format?: string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  
+  if (format === 'MM/dd/yyyy') {
+    return d.toLocaleDateString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric' 
+    });
+  }
+  
+  // Default format: YYYY-MM-DD
+  return d.toISOString().split('T')[0];
+};
+
+export const parseDate = (dateString: string): Date => {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    throw new Error('Invalid date string');
+  }
+  return date;
+};
+
+export const isDateInRange = (date: Date, startDate: Date, endDate: Date): boolean => {
+  const d = new Date(date);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Set time to start of day for comparison
+  d.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  return d >= start && d <= end;
+};
+
+export const getDateRange = (startDate: Date, endDate: Date): Date[] => {
+  const dates: Date[] = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (current <= end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+};
+
+export const addDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+export const subtractDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() - days);
+  return result;
+};
+
+export const getDaysDifference = (date1: Date, date2: Date): number => {
+  const oneDay = 24 * 60 * 60 * 1000;
+  return Math.round((date2.getTime() - date1.getTime()) / oneDay);
+};
+
+export const formatDateForAPI = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toISOString().split('T')[0];
+};
+
+export const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+};
+
+export const getWorkingDays = (startDate: Date, endDate: Date): number => {
+  let count = 0;
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (current <= end) {
+    if (!isWeekend(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+};
+
 export const formatDateRange = (start: Date, end: Date): string => {
   const startStr = start.toLocaleDateString('en-US', { 
     month: 'short', 

@@ -1,0 +1,139 @@
+name: Test and Coverage
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-and-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install root dependencies
+      run: npm ci
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run CI Tests
+      run: npm run test:ci
+
+    - name: Upload Frontend Coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-coverage
+        path: frontend/coverage/
+        retention-days: 30
+
+    - name: Upload Backend Coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-coverage
+        path: backend/coverage/
+        retention-days: 30
+
+    - name: Upload CI Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: ci-summary
+        path: coverage/ci/
+        retention-days: 30
+
+    - name: Display Coverage Summary
+      run: |
+        echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "frontend/coverage/coverage-summary.json" ]; then
+          echo "### Frontend Coverage" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const coverage = require('./frontend/coverage/coverage-summary.json');
+            const total = coverage.total;
+            console.log(\`- Statements: \${total.statements.pct}%\`);
+            console.log(\`- Branches: \${total.branches.pct}%\`);
+            console.log(\`- Functions: \${total.functions.pct}%\`);
+            console.log(\`- Lines: \${total.lines.pct}%\`);
+          " >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "backend/coverage/coverage-summary.json" ]; then
+          echo "### Backend Coverage" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const coverage = require('./backend/coverage/coverage-summary.json');
+            const total = coverage.total;
+            console.log(\`- Statements: \${total.statements.pct}%\`);
+            console.log(\`- Branches: \${total.branches.pct}%\`);
+            console.log(\`- Functions: \${total.functions.pct}%\`);
+            console.log(\`- Lines: \${total.lines.pct}%\`);
+          " >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "coverage/ci/summary.json" ]; then
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const summary = require('./coverage/ci/summary.json');
+            console.log(\`- Frontend: \${summary.frontend.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\`);
+            console.log(\`- Backend: \${summary.backend.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\`);
+            console.log(\`- Overall: \${summary.overall.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\`);
+          " >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./frontend/coverage/lcov.info,./backend/coverage/lcov.info
+        flags: frontend,backend
+        name: task-manager-coverage
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Check Coverage Thresholds
+      run: |
+        echo "Checking coverage thresholds..."
+        
+        # Check if coverage meets minimum requirements (80%)
+        if [ -f "frontend/coverage/coverage-summary.json" ]; then
+          FRONTEND_STATEMENTS=$(node -e "console.log(require('./frontend/coverage/coverage-summary.json').total.statements.pct)")
+          echo "Frontend statements coverage: ${FRONTEND_STATEMENTS}%"
+          
+          if (( $(echo "$FRONTEND_STATEMENTS < 80" | bc -l) )); then
+            echo "❌ Frontend coverage below 80% threshold"
+            exit 1
+          else
+            echo "✅ Frontend coverage meets 80% threshold"
+          fi
+        fi
+        
+        if [ -f "backend/coverage/coverage-summary.json" ]; then
+          BACKEND_STATEMENTS=$(node -e "console.log(require('./backend/coverage/coverage-summary.json').total.statements.pct)")
+          echo "Backend statements coverage: ${BACKEND_STATEMENTS}%"
+          
+          if (( $(echo "$BACKEND_STATEMENTS < 80" | bc -l) )); then
+            echo "❌ Backend coverage below 80% threshold"
+            exit 1
+          else
+            echo "✅ Backend coverage meets 80% threshold"
+          fi
+        fi
+        
+        echo "🎉 All coverage thresholds met!"

@@ -1,0 +1,223 @@
+name: CI Tests and Coverage
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run CI Tests
+      run: npm run test:ci
+
+    - name: Generate coverage reports
+      run: |
+        echo "Coverage reports generated during test:ci"
+        ls -la frontend/coverage/ || echo "Frontend coverage not found"
+        ls -la backend/coverage/ || echo "Backend coverage not found"
+        ls -la coverage/ || echo "Root coverage not found"
+
+    - name: Upload Frontend Coverage to Codecov
+      if: matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false
+
+    - name: Upload Backend Coverage to Codecov
+      if: matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage/lcov.info
+        flags: backend
+        name: backend-coverage
+        fail_ci_if_error: false
+
+    - name: Upload Coverage Reports as Artifacts
+      if: matrix.node-version == '20.x'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: |
+          frontend/coverage/
+          backend/coverage/
+          coverage/
+        retention-days: 30
+
+    - name: Upload Test Results
+      if: matrix.node-version == '20.x'
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          frontend/coverage/coverage-final.json
+          backend/coverage/coverage-final.json
+          coverage/ci/summary.json
+        retention-days: 30
+
+    - name: Comment Coverage on PR
+      if: github.event_name == 'pull_request' && matrix.node-version == '20.x'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let coverageComment = '## 📊 Test Coverage Report\n\n';
+          
+          try {
+            // Read frontend coverage
+            const frontendCoverage = JSON.parse(fs.readFileSync('frontend/coverage/coverage-summary.json', 'utf8'));
+            const frontendTotal = frontendCoverage.total;
+            
+            coverageComment += '### Frontend Coverage\n';
+            coverageComment += `- **Statements**: ${frontendTotal.statements.pct}%\n`;
+            coverageComment += `- **Branches**: ${frontendTotal.branches.pct}%\n`;
+            coverageComment += `- **Functions**: ${frontendTotal.functions.pct}%\n`;
+            coverageComment += `- **Lines**: ${frontendTotal.lines.pct}%\n\n`;
+          } catch (e) {
+            coverageComment += '### Frontend Coverage\n❌ Coverage data not available\n\n';
+          }
+          
+          try {
+            // Read backend coverage
+            const backendCoverage = JSON.parse(fs.readFileSync('backend/coverage/coverage-summary.json', 'utf8'));
+            const backendTotal = backendCoverage.total;
+            
+            coverageComment += '### Backend Coverage\n';
+            coverageComment += `- **Statements**: ${backendTotal.statements.pct}%\n`;
+            coverageComment += `- **Branches**: ${backendTotal.branches.pct}%\n`;
+            coverageComment += `- **Functions**: ${backendTotal.functions.pct}%\n`;
+            coverageComment += `- **Lines**: ${backendTotal.lines.pct}%\n\n`;
+          } catch (e) {
+            coverageComment += '### Backend Coverage\n❌ Coverage data not available\n\n';
+          }
+          
+          try {
+            // Read CI summary
+            const ciSummary = JSON.parse(fs.readFileSync('coverage/ci/summary.json', 'utf8'));
+            coverageComment += '### Test Results\n';
+            coverageComment += `- **Frontend**: ${ciSummary.frontend.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\n`;
+            coverageComment += `- **Backend**: ${ciSummary.backend.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\n`;
+            coverageComment += `- **Overall**: ${ciSummary.overall.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}\n`;
+          } catch (e) {
+            coverageComment += '### Test Results\n❌ Test summary not available\n';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: coverageComment
+          });
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Build Backend
+      run: |
+        cd backend
+        npm run build
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          frontend/build/
+          backend/dist/
+        retention-days: 7
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run Security Audit
+      run: |
+        npm audit --audit-level=high
+        cd frontend && npm audit --audit-level=high
+        cd ../backend && npm audit --audit-level=high
+
+    - name: Upload Security Report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-audit
+        path: |
+          npm-audit.json
+          frontend/npm-audit.json
+          backend/npm-audit.json
+        retention-days: 30

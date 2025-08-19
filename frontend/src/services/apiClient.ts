@@ -10,14 +10,26 @@ export const apiClient = axios.create({
   },
 });
 
+// Initialize common headers if they don't exist
+if (apiClient.defaults && apiClient.defaults.headers && !apiClient.defaults.headers.common) {
+  apiClient.defaults.headers.common = {};
+}
+
 // Function to set auth token (will be called from components with OIDC context)
 export const setAuthToken = (token: string) => {
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  if (apiClient.defaults && apiClient.defaults.headers) {
+    if (!apiClient.defaults.headers.common) {
+      apiClient.defaults.headers.common = {};
+    }
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
 };
 
 // Function to clear auth token
 export const clearAuthToken = () => {
-  delete apiClient.defaults.headers.common['Authorization'];
+  if (apiClient.defaults && apiClient.defaults.headers && apiClient.defaults.headers.common) {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
 };
 
 // Request interceptor to ensure auth token is always included
